@@ -30,17 +30,15 @@ import android.os.Bundle;
 //import android.support.v7.app.AppCompatActivity;
 import android.widget.TextView;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, SensorEventListener {
+public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
     private SensorManager sManager;
     private Sensor mSensorAccelerometer;
-    private TextView tv_step;
-    private TextView tv_mo;
-    private TextView tv_min;
-    private TextView tv_max;
-    private Button btn_start;
+    private TextView tv_x;
+    private TextView tv_y;
+    private TextView tv_z;
+    private double[] angle;
     private int step = 0;   //步数
-    private double oriValue = 0;  //原始值
     private double lstValue = 0;  //上次的值
     private double curValue = 0;  //当前值
     private double minValue = 100;  //当前值
@@ -54,81 +52,40 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         sManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        mSensorAccelerometer = sManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        mSensorAccelerometer = sManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         sManager.registerListener(this, mSensorAccelerometer, SensorManager.SENSOR_DELAY_UI);
         bindViews();
+        angle = new double[3];
     }
 
     private void bindViews() {
-
-        tv_step = (TextView) findViewById(R.id.tv_step);
-        tv_mo = (TextView) findViewById(R.id.tv_mo);
-        tv_min = (TextView) findViewById(R.id.tv_min);
-        tv_max = (TextView) findViewById(R.id.tv_max);
-        btn_start = (Button) findViewById(R.id.btn_start);
-        btn_start.setOnClickListener(this);
+        tv_x = (TextView) findViewById(R.id.tv_x);
+        tv_y = (TextView) findViewById(R.id.tv_y);
+        tv_z = (TextView) findViewById(R.id.tv_z);
     }
 
+    private static final float NS2S = 1.0f / 100000.0f;
+    private float timestamp;
 
     @Override
-    public void onSensorChanged(SensorEvent event) {
-        double range = 5;   //设定一个精度范围
-        float[] value = event.values;
-        curValue = magnitude(value[0], value[1], value[2]);   //计算当前的模
-        tv_mo.setText((float)Math.round(curValue*10)/10+"");
-        if(curValue>maxValue){
-            maxValue = curValue;
-            tv_max.setText((float)Math.round(maxValue*10)/10+"");
+    public void onSensorChanged(SensorEvent event)
+    {
+        if (timestamp != 0)
+        {
+            // event.timesamp表示当前的时间，单位是纳秒（1百万分之一毫秒）
+            final float dT = (event.timestamp - timestamp) * NS2S;
+            angle[0] += event.values[0] * dT;
+            angle[1] += event.values[1] * dT;
+            angle[2] += event.values[2] * dT;
+            tv_x.setText("X: "+angle[0]);
+            tv_y.setText("Y: "+angle[1]);
+            tv_z.setText("Z: "+angle[2]);
         }
-        if(curValue<minValue){
-            minValue = curValue;
-            tv_min.setText((float)Math.round(minValue*10)/10+"");
-        }
-        //向上加速的状态
-        if (motiveState == true) {
-            if (curValue >= lstValue) lstValue = curValue;
-            else {
-                //检测到一次峰值
-                if (Math.abs(curValue - lstValue) > range) {
-                    oriValue = curValue;
-                    motiveState = false;
-                }
-            }
-        }
-        //向下加速的状态
-        if (motiveState == false) {
-            if (curValue <= lstValue) lstValue = curValue;
-            else {
-                if (Math.abs(curValue - lstValue) > range) {
-                    //检测到一次峰值
-                    oriValue = curValue;
-                    if (processState == true) {
-                        step++;  //步数 + 1
-                        if (processState == true) {
-                            tv_step.setText(step + "");    //读数更新
-                        }
-                    }
-                    motiveState = true;
-                }
-            }
-        }
+        timestamp = event.timestamp;
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {}
-
-    @Override
-    public void onClick(View v) {
-        step = 0;
-        tv_step.setText("0");
-        if (processState == true) {
-            btn_start.setText("开始");
-            processState = false;
-        } else {
-            btn_start.setText("停止");
-            processState = true;
-        }
-    }
 
     //向量求模
     public double magnitude(float x, float y, float z) {
