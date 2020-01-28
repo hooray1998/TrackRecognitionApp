@@ -6,30 +6,59 @@ android:orientation="vertical"
 android:padding="5dp">
 
 <TextView
-    android:id="@+id/tv_value1"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:layout_marginTop="10dp"
-    android:text="方位角"
-    android:textSize="18sp"
-    android:textStyle="bold" />
+    android:layout_gravity="center_horizontal"
+    android:layout_marginTop="30dp"
+    android:text="简易计步器"
+    android:textSize="25sp" />
 
 <TextView
-    android:id="@+id/tv_value2"
+    android:id="@+id/tv_step"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:layout_marginTop="10dp"
-    android:text="倾斜角"
-    android:textSize="18sp"
+    android:layout_gravity="center_horizontal"
+    android:layout_marginTop="5dp"
+    android:text="0"
+    android:textColor="#DE5347"
+    android:textSize="100sp"
     android:textStyle="bold" />
 
-<TextView
-    android:id="@+id/tv_value3"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="10dp"
-    android:text="滚动角"
-    android:textSize="18sp"
-    android:textStyle="bold" />
+<Button
+    android:id="@+id/btn_start"
+    android:layout_width="match_parent"
+    android:layout_height="64dp"
+    android:text="开始"
+    android:textSize="25sp" />
 
+    <TextView
+        android:id="@+id/tv_min"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="5dp"
+        android:text="0"
+        android:textColor="#DE5347"
+        android:textSize="70sp"
+        android:textStyle="bold" />
+    <TextView
+        android:id="@+id/tv_mo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="5dp"
+        android:text="0"
+        android:textColor="#DE5347"
+        android:textSize="70sp"
+        android:textStyle="bold" />
+    <TextView
+        android:id="@+id/tv_max"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="5dp"
+        android:text="0"
+        android:textColor="#DE5347"
+        android:textSize="70sp"
+        android:textStyle="bold" />
 </LinearLayout>
