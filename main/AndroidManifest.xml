@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.example.myapplication3">
     <!-- 项目权限模块(这里写这个的目的就是为了方便，将权限中区分开不同的模块，便于后期其他人进行维护，管理) -->
     <!-- 允许程序打开网络套接字 -->
@@ -9,11 +10,6 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" /> <!-- 允许程序读写手机状态和身份 -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" /> <!-- 允许程序访问CellID或WiFi热点来获取粗略的位置 -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /> <!-- 项目第三方key配置模块 -->
-    <!-- 高德地图key -->
-    <meta-data
-        android:name="com.amap.api.v2.apikey"
-        android:value="3a9eff2c35fb79e8a3c81c6f2ebec537" />
-
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -21,6 +17,10 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+        <!-- 高德地图key -->
+        <meta-data
+            android:name="com.amap.api.v2.apikey"
+            android:value="3a9eff2c35fb79e8a3c81c6f2ebec537" />
         <activity android:name=".MapActivity"></activity>
         <activity
             android:name=".MainActivity"
@@ -32,6 +32,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+
+        <!-- 项目Service模块 -->
+        <!-- GaoDeLocationService -->
+        <service android:name="com.amap.api.location.APSService"/>
     </application>
 
 </manifest>
