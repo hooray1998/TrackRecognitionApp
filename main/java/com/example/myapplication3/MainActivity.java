@@ -10,6 +10,7 @@ import androidx.core.app.ActivityCompat;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -35,6 +36,7 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
     private static final int MY_PERMISSIONS_REQUEST_CALL_LOCATION = 1;
     public AMapLocationClient mlocationClient;
     public AMapLocationClientOption mLocationOption = null;
+    private TextView locationText;
 
     private Button mapButton;;
     @Override
@@ -42,6 +44,7 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        locationText = (TextView) findViewById(R.id.tv_location);
         mapButton = (Button) findViewById(R.id.mapButton);
         mapButton.setOnClickListener(new View.OnClickListener(){
             @Override
@@ -87,13 +90,14 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
             mlocationClient.setLocationListener(this);
             //设置定位模式为高精度模式，Battery_Saving为低功耗模式，Device_Sensors是仅设备模式
             mLocationOption.setLocationMode(AMapLocationClientOption.AMapLocationMode.Hight_Accuracy);
-            mLocationOption.setInterval(5000);
+            mLocationOption.setInterval(1000);
             //设置定位参数
             mlocationClient.setLocationOption(mLocationOption);
             //启动定位
             mlocationClient.startLocation();
+            showToast("显示定位OK");
         } catch (Exception e) {
-
+            showToast("显示定位异常");
         }
     }
 
@@ -104,11 +108,19 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
                 if (amapLocation.getErrorCode() == 0) {
                     //定位成功回调信息，设置相关消息
 
+                    StringBuffer text = new StringBuffer();
                     //获取当前定位结果来源，如网络定位结果，详见定位类型表
                     Log.i("定位类型", amapLocation.getLocationType() + "");
                     Log.i("获取纬度", amapLocation.getLatitude() + "");
                     Log.i("获取经度", amapLocation.getLongitude() + "");
                     Log.i("获取精度信息", amapLocation.getAccuracy() + "");
+
+                    text.append("纬度:" + amapLocation.getLatitude()+"\n");
+                    text.append("经度:" + amapLocation.getLongitude()+"\n");
+                    text.append("精度:" + amapLocation.getAccuracy()+"\n");
+                    text.append("海拔:" + amapLocation.getAltitude()+"\n");
+                    text.append("速度:" + amapLocation.getSpeed()+"\n");
+                    text.append("方向:" + amapLocation.getBearing()+"\n");
 
                     //如果option中设置isNeedAddress为false，则没有此结果，网络定位结果中会有地址信息，GPS定位不返回地址信息。
                     Log.i("地址", amapLocation.getAddress());
@@ -130,10 +142,12 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
                     Date date = new Date(amapLocation.getTime());
 
                     Log.i("获取定位时间", df.format(date));
+                    text.append("时间:"+df.format(date));
+                    locationText.setText(text.toString());
 
 
                     // 停止定位
-                    mlocationClient.stopLocation();
+                    //mlocationClient.stopLocation();
                 } else {
                     //定位失败时，可通过ErrCode（错误码）信息来确定失败的原因，errInfo是错误信息，详见错误码表。
                     Log.e("AmapError", "location Error, ErrCode:"

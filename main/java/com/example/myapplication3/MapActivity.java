@@ -129,7 +129,7 @@ public class MapActivity extends Activity implements LocationSource, AMapLocatio
 //        mLocationOption.setLocationMode(AMapLocationClientOption.AMapLocationMode.Device_Sensors);
         // SDK默认采用连续定位模式，时间间隔2000ms
         // 设置定位间隔，单位毫秒，默认为2000ms，最低1000ms。
-        mLocationOption.setInterval(3000);
+        mLocationOption.setInterval(1000);
         // 设置定位同时是否需要返回地址描述
         //设置是否返回地址信息（默认返回地址信息）
         mLocationOption.setNeedAddress(true);
@@ -139,9 +139,6 @@ public class MapActivity extends Activity implements LocationSource, AMapLocatio
         // 设置是否允许模拟软件Mock位置结果，多为模拟GPS定位结果，默认为false，不允许模拟位置。
         // 设置是否允许模拟位置,默认为false，不允许模拟位置
         mLocationOption.setMockEnable(false);
-        // 设置定位请求超时时间，默认为30秒
-        // 单位是毫秒，默认30000毫秒，建议超时时间不要低于8000毫秒。
-        mLocationOption.setHttpTimeOut(50000);
         // 设置是否开启定位缓存机制
         // 缓存机制默认开启，可以通过以下接口进行关闭。
         // 当开启定位缓存功能，在高精度模式和低功耗模式下进行的网络定位结果均会生成本地缓存，不区分单次定位还是连续定位。GPS定位结果不会被缓存。
@@ -177,6 +174,7 @@ public class MapActivity extends Activity implements LocationSource, AMapLocatio
         // 判断AMapLocation对象不为空，当定位错误码类型为0时定位成功
         if (aMapLocation != null) {
             if (aMapLocation.getErrorCode() == 0) {
+                Log.i("经纬度：","("+(double)Math.round(10000*aMapLocation.getLongitude())/10000+","+(double)Math.round(10000*aMapLocation.getLatitude())/10000+")");
                 aMapLocation.getLocationType(); // 获取当前定位结果来源，如网络定位结果，详见定位类型表
                 aMapLocation.getLatitude(); // 获取纬度
                 aMapLocation.getLongitude(); // 获取经度
@@ -199,7 +197,7 @@ public class MapActivity extends Activity implements LocationSource, AMapLocatio
                 Date date = new Date(aMapLocation.getTime());
                 df.format(date);
                 // 如果不设置标志位，拖动地图时，它会不断将地图移动到当前的位置
-                if (isFirstLocation) {
+                //if (isFirstLocation) {
                     // 设置缩放级别
                     aMap.moveCamera(CameraUpdateFactory.zoomTo(17));
                     // 将地图移动到定位点
@@ -207,7 +205,7 @@ public class MapActivity extends Activity implements LocationSource, AMapLocatio
                     // 点击定位按钮 能够将地图的中心移动到定位点
                     mListener.onLocationChanged(aMapLocation);
                     isFirstLocation = false;
-                }
+                //}
             } else {
                 // 定位失败时，可通过ErrCode（错误码）信息来确定失败的原因，errInfo是错误信息，详见错误码表。
                 Log.e("HLQ_Struggle", "location Error, ErrCode:"

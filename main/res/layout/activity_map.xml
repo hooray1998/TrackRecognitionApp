@@ -6,9 +6,9 @@
     android:layout_height="match_parent"
     tools:context=".MapActivity">
 
+
     <com.amap.api.maps.MapView
         android:id="@+id/id_gaode_location_map"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
-
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>
