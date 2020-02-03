@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
 android:layout_width="match_parent"
 android:layout_height="match_parent"
 android:orientation="vertical"
@@ -10,11 +10,38 @@ android:padding="5dp">
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="进入高德地图" />
+    <Button
+        android:id="@+id/sensorButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/mapButton"
+        android:text="支持的传感器列表" />
     <TextView
         android:id="@+id/tv_location"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Hello World!"
+        android:layout_below="@id/sensorButton"
+        />
+    <TextView
+        android:id="@+id/tv_jiasudu"
+        android:layout_width="wrap_content"
+        android:layout_height="80dp"
+        android:layout_below="@id/tv_location"
+        android:text="加速度"
+        />
+    <TextView
+        android:id="@+id/tv_tuoluoyi"
+        android:layout_width="wrap_content"
+        android:layout_height="200dp"
+        android:layout_below="@id/tv_jiasudu"
+        android:text="陀螺仪"
+        />
+    <TextView
+        android:id="@+id/tv_qiya"
+        android:layout_width="wrap_content"
+        android:layout_height="80dp"
+        android:layout_below="@id/tv_tuoluoyi"
+        android:text="气压"
         />
 
-</LinearLayout>
+</RelativeLayout>

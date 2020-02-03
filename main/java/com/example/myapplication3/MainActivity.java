@@ -4,6 +4,10 @@ package com.example.myapplication3;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
 import androidx.core.app.ActivityCompat;
@@ -23,6 +27,7 @@ import com.amap.api.location.AMapLocationListener;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
 /**
  * create by heliquan at 2017年5月4日23:26:59
@@ -31,20 +36,50 @@ import java.util.Date;
 /***
  * 高德定位
  */
-public class MainActivity extends AppCompatActivity implements AMapLocationListener {
+public class MainActivity extends AppCompatActivity implements AMapLocationListener, SensorEventListener {
+    //传感器
+    private SensorManager sManager;
+    private Sensor mSensorAccelerometer;
+    private Sensor mSensorGyroscope;
+    private Sensor mSensorPressure;
 
     private static final int MY_PERMISSIONS_REQUEST_CALL_LOCATION = 1;
     public AMapLocationClient mlocationClient;
     public AMapLocationClientOption mLocationOption = null;
     private TextView locationText;
+    private TextView jiasuduText;
+    private TextView tuoluoyiText;
+    private TextView qiyaText;
 
     private Button mapButton;;
+    private Button sensorButton;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        sManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        mSensorAccelerometer = sManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        mSensorGyroscope = sManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        mSensorPressure = sManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
+        sManager.registerListener((SensorEventListener) this, mSensorAccelerometer, SensorManager.SENSOR_DELAY_UI);
+        sManager.registerListener((SensorEventListener) this, mSensorGyroscope, SensorManager.SENSOR_DELAY_UI);
+        sManager.registerListener((SensorEventListener) this, mSensorPressure, SensorManager.SENSOR_DELAY_UI);
+
+        jiasuduText = (TextView)  findViewById(R.id.tv_jiasudu);
+        tuoluoyiText = (TextView)  findViewById(R.id.tv_tuoluoyi);
+        qiyaText = (TextView)  findViewById(R.id.tv_qiya);
         locationText = (TextView) findViewById(R.id.tv_location);
+        if(mSensorAccelerometer == null){
+            qiyaText.setText("加速度传感器不支持");
+        }
+        if(mSensorGyroscope == null){
+            qiyaText.setText("角速度传感器不支持");
+        }
+        if(mSensorPressure == null){
+            qiyaText.setText("气压传感器不支持");
+        }
+
         mapButton = (Button) findViewById(R.id.mapButton);
         mapButton.setOnClickListener(new View.OnClickListener(){
             @Override
@@ -52,6 +87,17 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
                 //Intent是一种运行时绑定（run-time binding）机制，它能在程序运行过程中连接两个不同的组件。 
                 //在存放资源代码的文件夹下下， 
                 Intent i = new Intent(MainActivity.this , MapActivity.class);
+                //启动 
+                startActivity(i);
+            }
+        });
+        sensorButton = (Button) findViewById(R.id.sensorButton);
+        sensorButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v){
+                //Intent是一种运行时绑定（run-time binding）机制，它能在程序运行过程中连接两个不同的组件。 
+                //在存放资源代码的文件夹下下， 
+                Intent i = new Intent(MainActivity.this , SensorActivity.class);
                 //启动 
                 startActivity(i);
             }
@@ -192,4 +238,33 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
         Toast.makeText(MainActivity.this, string, Toast.LENGTH_LONG).show();
     }
 
+    @Override
+    public void onSensorChanged(SensorEvent sensorEvent) {
+        float[] accelerometerValues;
+        float[] gyroscopeValues;
+        float pressureValues;
+        if (sensorEvent.sensor.getType() == Sensor.TYPE_PRESSURE) {
+            pressureValues = sensorEvent.values[0];
+            qiyaText.setText("气压:\nx:"+pressureValues );
+        }
+        else if (sensorEvent.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            accelerometerValues = sensorEvent.values.clone();
+            double curValue = magnitude(accelerometerValues[0], accelerometerValues[1], accelerometerValues[2]);   //计算当前的模
+            jiasuduText.setText("加速度:"+curValue);
+        } else if (sensorEvent.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+            gyroscopeValues = sensorEvent.values.clone();
+            tuoluoyiText.setText("陀螺仪:\nx:"+gyroscopeValues[0] + "\ny:" + gyroscopeValues[1] + "\nz:" + gyroscopeValues[2]);
+        }
+    }
+
+    //向量求模
+    public double magnitude(float x, float y, float z) {
+        return Math.sqrt(x * x + y * y + z * z);
+    }
+
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int i) {
+
+    }
 }
