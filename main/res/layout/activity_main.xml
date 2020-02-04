@@ -21,27 +21,75 @@ android:padding="5dp">
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/sensorButton"
+        android:text="GPS数据"
         />
     <TextView
         android:id="@+id/tv_jiasudu"
         android:layout_width="wrap_content"
-        android:layout_height="80dp"
+        android:layout_height="wrap_content"
         android:layout_below="@id/tv_location"
         android:text="加速度"
         />
     <TextView
         android:id="@+id/tv_tuoluoyi"
         android:layout_width="wrap_content"
-        android:layout_height="200dp"
+        android:layout_height="wrap_content"
         android:layout_below="@id/tv_jiasudu"
         android:text="陀螺仪"
         />
     <TextView
         android:id="@+id/tv_qiya"
         android:layout_width="wrap_content"
-        android:layout_height="80dp"
+        android:layout_height="wrap_content"
         android:layout_below="@id/tv_tuoluoyi"
         android:text="气压"
         />
+
+    <Button
+        android:id="@+id/saveButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:text="开始记录"
+       />
+    <RadioGroup
+        android:id="@+id/radioGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@id/saveButton"
+        android:layout_alignParentBottom="true"
+        >
+        <RadioButton
+            android:id="@+id/rd_go"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="直行"
+            />
+        <RadioButton
+            android:id="@+id/rd_left"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="左转"
+            />
+        <RadioButton
+            android:id="@+id/rd_right"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="右转"
+            />
+        <RadioButton
+            android:id="@+id/rd_leftU"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="左掉头"
+            />
+        <RadioButton
+            android:id="@+id/rd_rightU"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="右掉头"
+            />
+    </RadioGroup>
+
 
 </RelativeLayout>

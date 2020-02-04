@@ -2,6 +2,7 @@ package com.example.myapplication3;
 
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
@@ -11,12 +12,19 @@ import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
 import androidx.core.app.ActivityCompat;
+
+import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import android.widget.RadioGroup;
+import android.widget.RadioGroup.OnCheckedChangeListener;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
@@ -24,7 +32,13 @@ import com.amap.api.location.AMapLocation;
 import com.amap.api.location.AMapLocationClient;
 import com.amap.api.location.AMapLocationClientOption;
 import com.amap.api.location.AMapLocationListener;
+import com.google.android.material.chip.ChipGroup;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -46,6 +60,7 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
     private static final int MY_PERMISSIONS_REQUEST_CALL_LOCATION = 1;
     public AMapLocationClient mlocationClient;
     public AMapLocationClientOption mLocationOption = null;
+
     private TextView locationText;
     private TextView jiasuduText;
     private TextView tuoluoyiText;
@@ -53,55 +68,43 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
 
     private Button mapButton;;
     private Button sensorButton;
+    private Button saveButton;
+
+    private RadioGroup rdGroup;
+
+    private String curCheck = "init";
+    private String curFileName;
+    private boolean recoding = false;
+
+    private FileOutputStream fGps;
+    private FileOutputStream fLinear;
+    private FileOutputStream fAngular;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        sManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        mSensorAccelerometer = sManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        mSensorGyroscope = sManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-        mSensorPressure = sManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
-        sManager.registerListener((SensorEventListener) this, mSensorAccelerometer, SensorManager.SENSOR_DELAY_UI);
-        sManager.registerListener((SensorEventListener) this, mSensorGyroscope, SensorManager.SENSOR_DELAY_UI);
-        sManager.registerListener((SensorEventListener) this, mSensorPressure, SensorManager.SENSOR_DELAY_UI);
-
-        jiasuduText = (TextView)  findViewById(R.id.tv_jiasudu);
-        tuoluoyiText = (TextView)  findViewById(R.id.tv_tuoluoyi);
-        qiyaText = (TextView)  findViewById(R.id.tv_qiya);
-        locationText = (TextView) findViewById(R.id.tv_location);
-        if(mSensorAccelerometer == null){
-            qiyaText.setText("加速度传感器不支持");
-        }
-        if(mSensorGyroscope == null){
-            qiyaText.setText("角速度传感器不支持");
-        }
-        if(mSensorPressure == null){
-            qiyaText.setText("气压传感器不支持");
-        }
-
-        mapButton = (Button) findViewById(R.id.mapButton);
-        mapButton.setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View v){
-                //Intent是一种运行时绑定（run-time binding）机制，它能在程序运行过程中连接两个不同的组件。 
-                //在存放资源代码的文件夹下下， 
-                Intent i = new Intent(MainActivity.this , MapActivity.class);
-                //启动 
-                startActivity(i);
+        bindView();
+        initSensor();
+        /**
+         * 动态获取权限，Android 6.0 新特性，一些保护权限，除了要在AndroidManifest中声明权限，还要使用如下代码动态获取
+         */
+        if (Build.VERSION.SDK_INT >= 23) {
+            int REQUEST_CODE_CONTACT = 101;
+            String[] permissions = {Manifest.permission.WRITE_EXTERNAL_STORAGE};
+            //验证是否许可权限
+            for (String str : permissions) {
+                if (this.checkSelfPermission(str) != PackageManager.PERMISSION_GRANTED) {
+                    //申请权限
+                    this.requestPermissions(permissions, REQUEST_CODE_CONTACT);
+                    return;
+                }
             }
-        });
-        sensorButton = (Button) findViewById(R.id.sensorButton);
-        sensorButton.setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View v){
-                //Intent是一种运行时绑定（run-time binding）机制，它能在程序运行过程中连接两个不同的组件。 
-                //在存放资源代码的文件夹下下， 
-                Intent i = new Intent(MainActivity.this , SensorActivity.class);
-                //启动 
-                startActivity(i);
-            }
-        });
+        }
+    }
+
+    private void initSensor() {
         //检查版本是否大于M
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -113,6 +116,107 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
                 showLocation();
             }
         }
+        sManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        mSensorAccelerometer = sManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        mSensorGyroscope = sManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        mSensorPressure = sManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
+        sManager.registerListener((SensorEventListener) this, mSensorAccelerometer, SensorManager.SENSOR_DELAY_UI);
+        sManager.registerListener((SensorEventListener) this, mSensorGyroscope, SensorManager.SENSOR_DELAY_UI);
+        sManager.registerListener((SensorEventListener) this, mSensorPressure, SensorManager.SENSOR_DELAY_UI);
+
+        if(mSensorAccelerometer == null){
+            qiyaText.setText("加速度传感器不支持");
+        }
+        if(mSensorGyroscope == null){
+            qiyaText.setText("角速度传感器不支持");
+        }
+        if(mSensorPressure == null){
+            qiyaText.setText("气压传感器不支持");
+        }
+    }
+
+    private void bindView() {
+        jiasuduText = (TextView)  findViewById(R.id.tv_jiasudu);
+        tuoluoyiText = (TextView)  findViewById(R.id.tv_tuoluoyi);
+        qiyaText = (TextView)  findViewById(R.id.tv_qiya);
+        locationText = (TextView) findViewById(R.id.tv_location);
+        saveButton = (Button) findViewById(R.id.saveButton);
+        rdGroup = (RadioGroup) findViewById(R.id.radioGroup);
+
+        mapButton = (Button) findViewById(R.id.mapButton);
+        sensorButton = (Button) findViewById(R.id.sensorButton);
+
+        mapButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v){
+                //Intent是一种运行时绑定（run-time binding）机制，它能在程序运行过程中连接两个不同的组件。 
+                //在存放资源代码的文件夹下下， 
+                Intent i = new Intent(MainActivity.this , MapActivity.class);
+                //启动 
+                startActivity(i);
+            }
+        });
+        sensorButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v){
+                //Intent是一种运行时绑定（run-time binding）机制，它能在程序运行过程中连接两个不同的组件。 
+                //在存放资源代码的文件夹下下， 
+                Intent i = new Intent(MainActivity.this , SensorActivity.class);
+                //启动 
+                startActivity(i);
+            }
+        });
+
+        rdGroup.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup radioGroup, int i) {
+                RadioButton radbtn = (RadioButton) findViewById(i);
+                curCheck = radbtn.getText().toString();
+            }
+        });
+
+        saveButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(!recoding){
+                    if(curCheck == "init"){
+                        Toast.makeText(getApplicationContext(), "请先选择轨迹类型", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    recoding = !recoding;
+                    saveButton.setText("保存");
+                    rdGroup.setVisibility(View.INVISIBLE);
+
+                    String curTime = System.currentTimeMillis()+"ms.txt";
+
+                    try {
+                        fGps = getApplicationContext().openFileOutput("Gps_"+curCheck + curTime,Context.MODE_APPEND);
+                        fLinear = getApplicationContext().openFileOutput("Linear_"+curCheck + curTime,Context.MODE_APPEND);
+                        fAngular = getApplicationContext().openFileOutput("Angular_"+curCheck + curTime,Context.MODE_APPEND);
+                        showToast("开始记录数据");
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    }
+                }
+                else{
+                    recoding = !recoding;
+                    saveButton.setText("开始");
+                    rdGroup.setVisibility(View.VISIBLE);
+                    try {
+                        fGps.close();
+                        fLinear.close();
+                        fAngular.close();
+                        showToast("记录完成，文件保存");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                }
+
+            }
+        });
+
+
     }
 
     @Override
@@ -155,41 +259,41 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
                     //定位成功回调信息，设置相关消息
 
                     StringBuffer text = new StringBuffer();
-                    //获取当前定位结果来源，如网络定位结果，详见定位类型表
-                    Log.i("定位类型", amapLocation.getLocationType() + "");
-                    Log.i("获取纬度", amapLocation.getLatitude() + "");
-                    Log.i("获取经度", amapLocation.getLongitude() + "");
-                    Log.i("获取精度信息", amapLocation.getAccuracy() + "");
 
-                    text.append("纬度:" + amapLocation.getLatitude()+"\n");
-                    text.append("经度:" + amapLocation.getLongitude()+"\n");
-                    text.append("精度:" + amapLocation.getAccuracy()+"\n");
-                    text.append("海拔:" + amapLocation.getAltitude()+"\n");
-                    text.append("速度:" + amapLocation.getSpeed()+"\n");
-                    text.append("方向:" + amapLocation.getBearing()+"\n");
+                    double latitude = amapLocation.getLatitude();
+                    double longitude = amapLocation.getLongitude();
+                    double altitude = amapLocation.getAltitude();
+                    float speed = amapLocation.getSpeed();
+                    float bearing = amapLocation.getBearing();
 
-                    //如果option中设置isNeedAddress为false，则没有此结果，网络定位结果中会有地址信息，GPS定位不返回地址信息。
-                    Log.i("地址", amapLocation.getAddress());
-                    Log.i("国家信息", amapLocation.getCountry());
-                    Log.i("省信息", amapLocation.getProvince());
-                    Log.i("城市信息", amapLocation.getCity());
-                    Log.i("城区信息", amapLocation.getDistrict());
-                    Log.i("街道信息", amapLocation.getStreet());
-                    Log.i("街道门牌号信息", amapLocation.getStreetNum());
-                    Log.i("城市编码", amapLocation.getCityCode());
-                    Log.i("地区编码", amapLocation.getAdCode());
-                    Log.i("获取当前定位点的AOI信息", amapLocation.getAoiName());
-                    Log.i("获取当前室内定位的建筑物Id", amapLocation.getBuildingId());
-                    Log.i("获取当前室内定位的楼层", amapLocation.getFloor());
-                    Log.i("获取GPS的当前状态", amapLocation.getGpsAccuracyStatus() + "");
+                    text.append("纬度:" + latitude +"\n");
+                    text.append("经度:" + longitude+"\n");
+                    text.append("海拔:" + altitude+"\n");
+                    text.append("速度:" + speed+"\n");
+                    text.append("方向:" + bearing+"\n");
 
                     //获取定位时间
                     SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                     Date date = new Date(amapLocation.getTime());
 
-                    Log.i("获取定位时间", df.format(date));
-                    text.append("时间:"+df.format(date));
+                    long time = System.currentTimeMillis();
+                    text.append("时间:"+time);
                     locationText.setText(text.toString());
+
+                    String line =
+                            time + "," +
+                            latitude + "," +
+                            longitude + "," +
+                                    altitude + "," +
+                                    speed + "," +
+                                    bearing + "\n";
+                    try{
+                        if(recoding){
+                            fGps.write(line.getBytes());
+                        }
+                    }catch (Exception e){
+                        e.printStackTrace();
+                    }
 
 
                     // 停止定位
@@ -250,9 +354,36 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
         else if (sensorEvent.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             accelerometerValues = sensorEvent.values.clone();
             double curValue = magnitude(accelerometerValues[0], accelerometerValues[1], accelerometerValues[2]);   //计算当前的模
+
+            long time = System.currentTimeMillis();
+            String line =
+                    time + "," +
+                            accelerometerValues[0] + "," +
+                            accelerometerValues[1] + "," +
+                            accelerometerValues[2] + "\n";
+            try{
+                if(recoding){
+                    fLinear.write(line.getBytes());
+                }
+            }catch (Exception e){
+                e.printStackTrace();
+            }
             jiasuduText.setText("加速度:"+curValue);
         } else if (sensorEvent.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
             gyroscopeValues = sensorEvent.values.clone();
+            long time = System.currentTimeMillis();
+            String line =
+                    time + "," +
+                            gyroscopeValues[0] + "," +
+                            gyroscopeValues[1] + "," +
+                            gyroscopeValues[2] + "\n";
+            try{
+                if(recoding){
+                    fAngular.write(line.getBytes());
+                }
+            }catch (Exception e){
+                e.printStackTrace();
+            }
             tuoluoyiText.setText("陀螺仪:\nx:"+gyroscopeValues[0] + "\ny:" + gyroscopeValues[1] + "\nz:" + gyroscopeValues[2]);
         }
     }
