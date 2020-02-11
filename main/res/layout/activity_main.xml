@@ -16,11 +16,17 @@ android:padding="5dp">
         android:layout_height="wrap_content"
         android:layout_below="@id/mapButton"
         android:text="支持的传感器列表" />
+    <Button
+        android:id="@+id/routeButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/sensorButton"
+        android:text="行车轨迹" />
     <TextView
         android:id="@+id/tv_location"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/sensorButton"
+        android:layout_below="@id/routeButton"
         android:text="GPS数据"
         />
     <TextView

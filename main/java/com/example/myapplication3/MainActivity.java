@@ -68,6 +68,7 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
 
     private Button mapButton;;
     private Button sensorButton;
+    private Button routeButton;
     private Button saveButton;
 
     private RadioGroup rdGroup;
@@ -145,6 +146,7 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
 
         mapButton = (Button) findViewById(R.id.mapButton);
         sensorButton = (Button) findViewById(R.id.sensorButton);
+        routeButton = (Button) findViewById(R.id.routeButton);
 
         mapButton.setOnClickListener(new View.OnClickListener(){
             @Override
@@ -157,11 +159,21 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
             }
         });
         sensorButton.setOnClickListener(new View.OnClickListener(){
+                @Override
+                public void onClick(View v){
+                    //Intent是一种运行时绑定（run-time binding）机制，它能在程序运行过程中连接两个不同的组件。 
+                    //在存放资源代码的文件夹下下， 
+                    Intent i = new Intent(MainActivity.this , SensorActivity.class);
+                    //启动 
+                    startActivity(i);
+                }
+        });
+        routeButton.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v){
                 //Intent是一种运行时绑定（run-time binding）机制，它能在程序运行过程中连接两个不同的组件。 
                 //在存放资源代码的文件夹下下， 
-                Intent i = new Intent(MainActivity.this , SensorActivity.class);
+                Intent i = new Intent(MainActivity.this , RouteActivity.class);
                 //启动 
                 startActivity(i);
             }
