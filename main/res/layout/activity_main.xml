@@ -5,30 +5,16 @@ android:layout_height="match_parent"
 android:orientation="vertical"
 android:padding="5dp">
 
-    <Button
-        android:id="@+id/mapButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="进入高德地图" />
-    <Button
-        android:id="@+id/sensorButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/mapButton"
-        android:text="支持的传感器列表" />
-    <Button
-        android:id="@+id/routeButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/sensorButton"
-        android:text="行车轨迹" />
     <TextView
         android:id="@+id/tv_location"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/routeButton"
         android:text="GPS数据"
         />
+    <View
+        android:layout_width="fill_parent"
+        android:layout_height="1px"
+        android:background="@android:color/darker_gray"  />
     <TextView
         android:id="@+id/tv_jiasudu"
         android:layout_width="wrap_content"
@@ -36,6 +22,10 @@ android:padding="5dp">
         android:layout_below="@id/tv_location"
         android:text="加速度"
         />
+    <View
+        android:layout_width="fill_parent"
+        android:layout_height="1px"
+        android:background="@android:color/darker_gray"  />
     <TextView
         android:id="@+id/tv_tuoluoyi"
         android:layout_width="wrap_content"
@@ -43,14 +33,22 @@ android:padding="5dp">
         android:layout_below="@id/tv_jiasudu"
         android:text="陀螺仪"
         />
+    <View
+        android:layout_width="fill_parent"
+        android:layout_height="1px"
+        android:background="@android:color/darker_gray"  />
     <TextView
-        android:id="@+id/tv_qiya"
+        android:id="@+id/tv_fangxiang"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/tv_tuoluoyi"
-        android:text="气压"
+        android:text="方向(磁场+加速度)"
         />
 
+    <View
+        android:layout_width="fill_parent"
+        android:layout_height="10px"
+        android:background="@android:color/darker_gray"  />
     <Button
         android:id="@+id/saveButton"
         android:layout_width="wrap_content"
