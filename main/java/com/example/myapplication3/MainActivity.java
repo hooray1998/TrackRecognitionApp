@@ -1,6 +1,8 @@
 package com.example.myapplication3;
 
 
+import android.app.Activity;
+import android.media.MediaPlayer;
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
@@ -12,7 +14,10 @@ import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
 import androidx.core.app.ActivityCompat;
+import android.media.AudioManager;
 
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -86,6 +91,19 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
     private FileWriter fAngular;
     private FileWriter fOrientation;
 
+    private float runTime;
+    private MediaPlayer mEnd;
+    private MediaPlayer mClock;
+
+
+    public AudioManager mAudioManager;
+    private int maxVolume;
+    private int lastVolume;
+    private boolean isDestroy;
+    private Thread volumeChangeThread;
+    private boolean startListenVolume;
+    private Handler handler;
+
     public MainActivity() {
     }
 
@@ -94,8 +112,22 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        isDestroy = false;
+        startListenVolume = false;
+        // 获得AudioManager对象
+        mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);//音乐音量,如果要监听铃声音量变化，则改为AudioManager.STREAM_RING
+        //maxVolume = mAudioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+        //onVolumeChangeListener();
+        handler=new Handler(){
+            @Override
+            public void handleMessage(Message msg) {
+                saveButton.performClick();
+            }
+        };
         bindView();
         initSensor();
+        mEnd = MediaPlayer.create(this, R.raw.shoot);
+        mClock = MediaPlayer.create(this, R.raw.ready_run);
 
         curAppStartTime = System.currentTimeMillis();
 
@@ -145,9 +177,9 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
         mSensorAccelerometer = sManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mSensorGyroscope = sManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         mSensorMagnetic = sManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        sManager.registerListener((SensorEventListener) this, mSensorAccelerometer, SensorManager.SENSOR_DELAY_UI);
-        sManager.registerListener((SensorEventListener) this, mSensorGyroscope, SensorManager.SENSOR_DELAY_UI);
-        sManager.registerListener((SensorEventListener) this, mSensorMagnetic, SensorManager.SENSOR_DELAY_UI);
+        sManager.registerListener(this, mSensorAccelerometer, SensorManager.SENSOR_DELAY_UI);
+        sManager.registerListener(this, mSensorGyroscope, SensorManager.SENSOR_DELAY_UI);
+        sManager.registerListener(this, mSensorMagnetic, SensorManager.SENSOR_DELAY_UI);
 
         if(mSensorAccelerometer == null){
             jiasuduText.setText("加速度传感器不支持");
@@ -175,7 +207,7 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
         rdGroup.setOnCheckedChangeListener(new OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup radioGroup, int i) {
-                RadioButton radbtn = (RadioButton) findViewById(i);
+                RadioButton radbtn = findViewById(i);
                 curCheck = radbtn.getText().toString();
                 saveButton.setText("开始"+curCheck);
             }
@@ -189,11 +221,13 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
                         Toast.makeText(getApplicationContext(), "请先选择轨迹类型", Toast.LENGTH_LONG).show();
                         return;
                     }
+                    if(!startListenVolume) onVolumeChangeListener();
+
                     recording = !recording;
                     recordTimestamp = System.currentTimeMillis();
                     saveButton.setText("保存");
                     rdGroup.setVisibility(View.INVISIBLE);
-                    countArray.put(curCheck, countArray.get(curCheck) + 1);
+                    mClock.start();
 
                     String filenameHead = curAppStartTime + "_" + curCheck + "_" + countArray.get(curCheck) + "_";
                     fGps.create(filenameHead + "Gps");
@@ -202,9 +236,16 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
                     fOrientation.create(filenameHead + "Orientation");
                 }
                 else{
+                    mClock.pause();
+                    mClock.seekTo(0);
                     recording = !recording;
                     saveButton.setText("开始"+curCheck);
                     rdGroup.setVisibility(View.VISIBLE);
+
+                    if(!fAngular.empty) {
+                        countArray.put(curCheck, countArray.get(curCheck) + 1);
+                        mEnd.start();
+                    }
                     String countInfo = String.format("直行    : %d\n左转    : %d\n右转    : %d\n左掉头: %d\n右掉头: %d\n",
                             countArray.get("直行"),
                             countArray.get("左转"),
@@ -277,7 +318,7 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
                     locationText.setText(text.toString());
 
                     String line = latitude + "," + longitude + "," + altitude + "," + speed + "," + bearing;
-                    fGps.append(line, recording);
+                    fGps.append(line, recording && (runTime > 0));
 
                 } else {
                     //定位失败时，可通过ErrCode（错误码）信息来确定失败的原因，errInfo是错误信息，详见错误码表。
@@ -316,6 +357,7 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
     @Override
     protected void onDestroy() {
         destroyLocation();
+        isDestroy = true;
         super.onDestroy();
     }
 
@@ -326,8 +368,13 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
         if(recording){
-            float difftime = ((float) ((System.currentTimeMillis() - recordTimestamp)/100))/10;
-            saveButton.setText(curCheck + " " + difftime + "s");
+            runTime = (float) ((System.currentTimeMillis() - recordTimestamp - 3200)/1000.0);
+            if(runTime <= 0){
+                if(runTime < -3) runTime = -2; // 防止显示数字4
+                saveButton.setText("倒计时: "+ (int)(1 - runTime) + "s");
+            }
+            else
+                saveButton.setText(curCheck + " "+ (int)(runTime) + "s");
         }
         if (sensorEvent.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
             magneticFieldValues = sensorEvent.values.clone();
@@ -336,13 +383,11 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
         else if (sensorEvent.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             accelerometerValues = sensorEvent.values.clone();
             double curValue = magnitude(accelerometerValues[0], accelerometerValues[1], accelerometerValues[2]);   //计算当前的模
-
-            fLinear.append(accelerometerValues, recording);
-
+            fLinear.append(accelerometerValues, recording && (runTime > 0));
             jiasuduText.setText("\n加速度:" + Format(curValue, "%04.1f") + "\nx:"+Format(accelerometerValues[0], "%04.1f") + "\ny:" + Format(accelerometerValues[1], "%04.1f") + "\nz:" + Format(accelerometerValues[2], "%04.1f"));
         } else if (sensorEvent.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
             gyroscopeValues = sensorEvent.values.clone();
-            fAngular.append(gyroscopeValues, recording);
+            fAngular.append(gyroscopeValues, recording && (runTime > 0));
             tuoluoyiText.setText("\n角速度:"  + "\nx:"+Format(gyroscopeValues[0], "%04.1f") + "\ny:" + Format(gyroscopeValues[1], "%04.1f") + "\nz:" + Format(gyroscopeValues[2], "%04.1f"));
         }
     }
@@ -377,11 +422,11 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
         if(angle[1]<0) angle[1] += 360;
         if(angle[2]<0) angle[2] += 360;
 
-        fOrientation.append(angle, recording);
+        fOrientation.append(angle, recording && (runTime > 0));
 
         if(timestamp - lastTimestamp > 1000){
             lastTimestamp = timestamp;
-            fangxiangText.setText("\nx: " + Math.round(angle[0]) +
+            fangxiangText.setText("方向:\nx: " + Math.round(angle[0]) +
                     "\ny: " + Math.round(angle[1]) +
                     "\nz: " + Math.round(angle[2]));
         }
@@ -398,5 +443,39 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
             return true;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    public void onVolumeChangeListener()
+    {
+
+        volumeChangeThread = new Thread()
+        {
+            public void run()
+            {
+                while (!isDestroy)
+                {
+                    // 监听的时间间隔
+                    try
+                    {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e)
+                    {
+                        infoText.setText("error in onVolumeChangeListener Thread.sleep(20) " + e.getMessage());
+                    }
+                    int curVolume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                    if (curVolume > lastVolume)
+                    {
+                        if(!recording) handler.sendEmptyMessage(0);
+                    }
+                    else if (curVolume < lastVolume)
+                    {
+                        if(recording) handler.sendEmptyMessage(0);
+                    }
+                    lastVolume = curVolume;
+
+                }
+            }
+        };
+        volumeChangeThread.start();
     }
 }

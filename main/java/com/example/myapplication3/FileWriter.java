@@ -10,9 +10,8 @@ public class FileWriter {
 
     private Context mContext;
     FileOutputStream file;
-
-    public FileWriter() {
-    }
+    public   boolean empty;
+    String curFilename;
 
     public FileWriter(Context mContext) {
         super();
@@ -24,30 +23,39 @@ public class FileWriter {
      * */
     public void create(String filename) {
 
-        String curFilename = filename + ".txt";
+        curFilename = filename + ".txt";
+        empty = true;
 
+    }
+
+    public void realCreate(){
         try {
             file = mContext.openFileOutput(curFilename, Context.MODE_APPEND);
+            empty = false;
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
-
     }
 
     public void append(String line, boolean recoding) {
         if (!recoding) return;
+
+        if(empty) realCreate();
+
         line = System.currentTimeMillis() + "," + line + "\n";
-        try {
-            file.write(line.getBytes());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        write(line);
     }
 
     public void append(float[] values, boolean recoding) {
         if (!recoding) return;
 
+        if(empty) realCreate();
+
         String line = System.currentTimeMillis() + "," + join(values) + "\n";
+        write(line);
+    }
+
+    public void write(String line){
         try {
             file.write(line.getBytes());
         } catch (IOException e) {
@@ -56,6 +64,7 @@ public class FileWriter {
     }
 
     public void close(){
+        if(empty) return;
         try {
             file.close();
         } catch (IOException e) {
