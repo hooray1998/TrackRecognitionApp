@@ -3,6 +3,7 @@ package com.example.myapplication3;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -13,6 +14,7 @@ import android.os.Bundle;
 import androidx.core.app.ActivityCompat;
 
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.RadioButton;
@@ -34,6 +36,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * create by zhuyafei at 2020年1月30日23:26:59
@@ -56,12 +60,11 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
     public AMapLocationClientOption mLocationOption = null;
 
     private TextView locationText;
+    private TextView infoText;
     private TextView jiasuduText;
     private TextView tuoluoyiText;
     private TextView fangxiangText;
-
     private Button saveButton;
-
     private RadioGroup rdGroup;
 
     private float lastTimestamp = 0;
@@ -72,8 +75,11 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
 
 
     private String curCheck = "init";
-    private String curFileName;
-    private boolean recoding = false;
+    private boolean recording = false;
+    private long recordTimestamp ;
+
+    private Map<String, Integer> countArray;
+    private long curAppStartTime;
 
     private FileWriter fGps;
     private FileWriter fLinear;
@@ -91,7 +97,15 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
         bindView();
         initSensor();
 
+        curAppStartTime = System.currentTimeMillis();
+
         mContext = getApplicationContext();
+        countArray = new HashMap();
+        countArray.put("直行", 0);
+        countArray.put("左转", 0);
+        countArray.put("左掉头", 0);
+        countArray.put("右转", 0);
+        countArray.put("右掉头", 0);
 
         fGps = new FileWriter(mContext);
         fLinear = new FileWriter(mContext);
@@ -147,14 +161,15 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
     }
 
     private void bindView() {
-        jiasuduText = (TextView)  findViewById(R.id.tv_jiasudu);
-        tuoluoyiText = (TextView)  findViewById(R.id.tv_tuoluoyi);
-        fangxiangText = (TextView)  findViewById(R.id.tv_fangxiang);
+        jiasuduText = findViewById(R.id.tv_jiasudu);
+        tuoluoyiText = findViewById(R.id.tv_tuoluoyi);
+        fangxiangText = findViewById(R.id.tv_fangxiang);
 
-        locationText = (TextView) findViewById(R.id.tv_location);
+        locationText = findViewById(R.id.tv_location);
+        infoText = findViewById(R.id.tv_info);
 
-        saveButton = (Button) findViewById(R.id.saveButton);
-        rdGroup = (RadioGroup) findViewById(R.id.radioGroup);
+        saveButton = findViewById(R.id.saveButton);
+        rdGroup = findViewById(R.id.radioGroup);
 
 
         rdGroup.setOnCheckedChangeListener(new OnCheckedChangeListener() {
@@ -162,30 +177,42 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
             public void onCheckedChanged(RadioGroup radioGroup, int i) {
                 RadioButton radbtn = (RadioButton) findViewById(i);
                 curCheck = radbtn.getText().toString();
+                saveButton.setText("开始"+curCheck);
             }
         });
 
         saveButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(!recoding){
+                if(!recording){
                     if(curCheck == "init"){
                         Toast.makeText(getApplicationContext(), "请先选择轨迹类型", Toast.LENGTH_LONG).show();
                         return;
                     }
-                    recoding = !recoding;
+                    recording = !recording;
+                    recordTimestamp = System.currentTimeMillis();
                     saveButton.setText("保存");
                     rdGroup.setVisibility(View.INVISIBLE);
+                    countArray.put(curCheck, countArray.get(curCheck) + 1);
 
-                    fGps.create("Gps_" + curCheck);
-                    fLinear.create("Linear_" + curCheck);
-                    fAngular.create("Angular_" + curCheck);
-                    fOrientation.create("Orientation_" + curCheck);
+                    String filenameHead = curAppStartTime + "_" + curCheck + "_" + countArray.get(curCheck) + "_";
+                    fGps.create(filenameHead + "Gps");
+                    fLinear.create(filenameHead + "Linear");
+                    fAngular.create(filenameHead + "Angular");
+                    fOrientation.create(filenameHead + "Orientation");
                 }
                 else{
-                    recoding = !recoding;
-                    saveButton.setText("开始");
+                    recording = !recording;
+                    saveButton.setText("开始"+curCheck);
                     rdGroup.setVisibility(View.VISIBLE);
+                    String countInfo = String.format("直行    : %d\n左转    : %d\n右转    : %d\n左掉头: %d\n右掉头: %d\n",
+                            countArray.get("直行"),
+                            countArray.get("左转"),
+                            countArray.get("右转"),
+                            countArray.get("左掉头"),
+                            countArray.get("右掉头")
+                            );
+                    infoText.setText(countInfo);
 
                     fGps.close();
                     fLinear.close();
@@ -250,7 +277,7 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
                     locationText.setText(text.toString());
 
                     String line = latitude + "," + longitude + "," + altitude + "," + speed + "," + bearing;
-                    fGps.append(line, recoding);
+                    fGps.append(line, recording);
 
                 } else {
                     //定位失败时，可通过ErrCode（错误码）信息来确定失败的原因，errInfo是错误信息，详见错误码表。
@@ -298,6 +325,10 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
 
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
+        if(recording){
+            float difftime = ((float) ((System.currentTimeMillis() - recordTimestamp)/100))/10;
+            saveButton.setText(curCheck + " " + difftime + "s");
+        }
         if (sensorEvent.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
             magneticFieldValues = sensorEvent.values.clone();
             calculateOrientation(sensorEvent.timestamp);
@@ -306,12 +337,12 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
             accelerometerValues = sensorEvent.values.clone();
             double curValue = magnitude(accelerometerValues[0], accelerometerValues[1], accelerometerValues[2]);   //计算当前的模
 
-            fLinear.append(accelerometerValues, recoding);
+            fLinear.append(accelerometerValues, recording);
 
             jiasuduText.setText("\n加速度:" + Format(curValue, "%04.1f") + "\nx:"+Format(accelerometerValues[0], "%04.1f") + "\ny:" + Format(accelerometerValues[1], "%04.1f") + "\nz:" + Format(accelerometerValues[2], "%04.1f"));
         } else if (sensorEvent.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
             gyroscopeValues = sensorEvent.values.clone();
-            fAngular.append(gyroscopeValues, recoding);
+            fAngular.append(gyroscopeValues, recording);
             tuoluoyiText.setText("\n角速度:"  + "\nx:"+Format(gyroscopeValues[0], "%04.1f") + "\ny:" + Format(gyroscopeValues[1], "%04.1f") + "\nz:" + Format(gyroscopeValues[2], "%04.1f"));
         }
     }
@@ -346,7 +377,7 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
         if(angle[1]<0) angle[1] += 360;
         if(angle[2]<0) angle[2] += 360;
 
-        fOrientation.append(angle, recoding);
+        fOrientation.append(angle, recording);
 
         if(timestamp - lastTimestamp > 1000){
             lastTimestamp = timestamp;
@@ -354,5 +385,18 @@ public class MainActivity extends AppCompatActivity implements AMapLocationListe
                     "\ny: " + Math.round(angle[1]) +
                     "\nz: " + Math.round(angle[2]));
         }
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            Intent home = new Intent(Intent.ACTION_MAIN);
+            home.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            home.addCategory(Intent.CATEGORY_HOME);
+            startActivity(home);
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
     }
 }

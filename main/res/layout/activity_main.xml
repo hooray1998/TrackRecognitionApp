@@ -49,18 +49,25 @@ android:padding="5dp">
         android:layout_width="fill_parent"
         android:layout_height="10px"
         android:background="@android:color/darker_gray"  />
+
     <Button
         android:id="@+id/saveButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="259dp"
+        android:layout_height="158dp"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentRight="true"
         android:layout_alignParentBottom="true"
+        android:layout_marginEnd="76dp"
+        android:layout_marginRight="76dp"
+        android:layout_marginBottom="207dp"
         android:text="开始记录"
-       />
+        android:textSize="36sp" />
+
     <RadioGroup
         android:id="@+id/radioGroup"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_toRightOf="@id/saveButton"
+        android:layout_alignBottom="@id/saveButton"
         android:layout_alignParentBottom="true"
         >
         <RadioButton
@@ -76,16 +83,16 @@ android:padding="5dp">
             android:text="左转"
             />
         <RadioButton
-            android:id="@+id/rd_right"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="右转"
-            />
-        <RadioButton
             android:id="@+id/rd_leftU"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="左掉头"
+            />
+        <RadioButton
+            android:id="@+id/rd_right"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="右转"
             />
         <RadioButton
             android:id="@+id/rd_rightU"
@@ -94,6 +101,16 @@ android:padding="5dp">
             android:text="右掉头"
             />
     </RadioGroup>
+
+    <TextView
+        android:id="@+id/tv_info"
+        android:layout_width="146dp"
+        android:layout_height="305dp"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentRight="true"
+        android:layout_marginEnd="9dp"
+        android:layout_marginRight="9dp"
+        android:text="TextView" />
 
 
 </RelativeLayout>

@@ -24,7 +24,7 @@ public class FileWriter {
      * */
     public void create(String filename) {
 
-        String curFilename = filename + "_" + System.currentTimeMillis() + ".txt";
+        String curFilename = filename + ".txt";
 
         try {
             file = mContext.openFileOutput(curFilename, Context.MODE_APPEND);
