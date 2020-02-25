@@ -26,16 +26,12 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".RouteActivity"></activity>
-        <activity
-            android:name=".SensorActivity"
-            android:label="@string/title_activity_sensor"
-            android:theme="@style/AppTheme.NoActionBar" /> <!-- 高德地图key -->
+        <activity android:name=".PredictActivity"></activity>
+        <activity android:name=".RecordActivity" />
         <meta-data
             android:name="com.amap.api.v2.apikey"
             android:value="3a9eff2c35fb79e8a3c81c6f2ebec537" />
 
-        <activity android:name=".MapActivity" />
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name"
