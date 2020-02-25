@@ -14,7 +14,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
@@ -25,19 +24,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
-import com.amap.api.location.AMapLocation;
-import com.amap.api.location.AMapLocationClient;
-import com.amap.api.location.AMapLocationClientOption;
-import com.amap.api.location.AMapLocationListener;
 import com.example.myapplication3.tools.FileWriter;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class RecordActivity extends AppCompatActivity implements AMapLocationListener, SensorEventListener {
+public class RecordActivity extends AppCompatActivity implements SensorEventListener {
 
     private Context mContext;
     //传感器
@@ -46,11 +39,6 @@ public class RecordActivity extends AppCompatActivity implements AMapLocationLis
     private Sensor mSensorGyroscope;
     private Sensor mSensorMagnetic; //地磁场传感器
 
-    private static final int MY_PERMISSIONS_REQUEST_CALL_LOCATION = 1;
-    public AMapLocationClient mlocationClient;
-    public AMapLocationClientOption mLocationOption = null;
-
-    private TextView locationText;
     private TextView infoText;
     private TextView jiasuduText;
     private TextView tuoluoyiText;
@@ -72,7 +60,6 @@ public class RecordActivity extends AppCompatActivity implements AMapLocationLis
     private Map<String, Integer> countArray;
     private long curAppStartTime;
 
-    private FileWriter fGps;
     private FileWriter fLinear;
     private FileWriter fAngular;
     private FileWriter fOrientation;
@@ -102,8 +89,6 @@ public class RecordActivity extends AppCompatActivity implements AMapLocationLis
         startListenVolume = false;
         // 获得AudioManager对象
         mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);//音乐音量,如果要监听铃声音量变化，则改为AudioManager.STREAM_RING
-        //maxVolume = mAudioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-        //onVolumeChangeListener();
         handler=new Handler(){
             @Override
             public void handleMessage(Message msg) {
@@ -125,13 +110,12 @@ public class RecordActivity extends AppCompatActivity implements AMapLocationLis
         countArray.put("右转", 0);
         countArray.put("右掉头", 0);
 
-        fGps = new FileWriter(mContext);
         fLinear = new FileWriter(mContext);
         fAngular = new FileWriter(mContext);
         fOrientation = new FileWriter(mContext);
 
         /**
-         * 动态获取权限，Android 6.0 新特性，一些保护权限，除了要在AndroidManifest中声明权限，还要使用如下代码动态获取
+         * 动态获取存储权限，Android 6.0 新特性，一些保护权限，除了要在AndroidManifest中声明权限，还要使用如下代码动态获取
          */
         if (Build.VERSION.SDK_INT >= 23) {
             int REQUEST_CODE_CONTACT = 101;
@@ -148,17 +132,6 @@ public class RecordActivity extends AppCompatActivity implements AMapLocationLis
     }
 
     private void initSensor() {
-        //检查版本是否大于M
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                        MY_PERMISSIONS_REQUEST_CALL_LOCATION);
-            } else {
-                //"权限已申请";
-                showLocation();
-            }
-        }
         sManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         mSensorAccelerometer = sManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mSensorGyroscope = sManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
@@ -183,7 +156,6 @@ public class RecordActivity extends AppCompatActivity implements AMapLocationLis
         tuoluoyiText = findViewById(R.id.tv_tuoluoyi);
         fangxiangText = findViewById(R.id.tv_fangxiang);
 
-        locationText = findViewById(R.id.tv_location);
         infoText = findViewById(R.id.tv_info);
 
         saveButton = findViewById(R.id.saveButton);
@@ -216,7 +188,6 @@ public class RecordActivity extends AppCompatActivity implements AMapLocationLis
                     mClock.start();
 
                     String filenameHead = curAppStartTime + "_" + curCheck + "_" + countArray.get(curCheck) + "_";
-                    fGps.create(filenameHead + "Gps");
                     fLinear.create(filenameHead + "Linear");
                     fAngular.create(filenameHead + "Angular");
                     fOrientation.create(filenameHead + "Orientation");
@@ -241,7 +212,6 @@ public class RecordActivity extends AppCompatActivity implements AMapLocationLis
                     );
                     infoText.setText(countInfo);
 
-                    fGps.close();
                     fLinear.close();
                     fAngular.close();
                     fOrientation.close();
@@ -251,98 +221,9 @@ public class RecordActivity extends AppCompatActivity implements AMapLocationLis
         });
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        if (requestCode == MY_PERMISSIONS_REQUEST_CALL_LOCATION) {
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                //"权限已申请"
-                showLocation();
-            } else {
-                showToast("权限已拒绝,不能定位");
-
-            }
-        }
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-    }
-
-    private void showLocation() {
-        try {
-            mlocationClient = new AMapLocationClient(this);
-            mLocationOption = new AMapLocationClientOption();
-            mlocationClient.setLocationListener(this);
-            //设置定位模式为高精度模式，Battery_Saving为低功耗模式，Device_Sensors是仅设备模式
-            mLocationOption.setLocationMode(AMapLocationClientOption.AMapLocationMode.Hight_Accuracy);
-            mLocationOption.setInterval(1000);
-            //设置定位参数
-            mlocationClient.setLocationOption(mLocationOption);
-            //启动定位
-            mlocationClient.startLocation();
-            showToast("显示定位OK");
-        } catch (Exception e) {
-            showToast("显示定位异常");
-        }
-    }
-
-    @Override
-    public void onLocationChanged(AMapLocation amapLocation) {
-        try {
-            if (amapLocation != null) {
-                if (amapLocation.getErrorCode() == 0) {
-                    //定位成功回调信息，设置相关消息
-                    double latitude = amapLocation.getLatitude();
-                    double longitude = amapLocation.getLongitude();
-                    double altitude = amapLocation.getAltitude();
-                    float speed = amapLocation.getSpeed();
-                    float bearing = amapLocation.getBearing();
-
-                    StringBuffer text = new StringBuffer();
-                    text.append("纬度:" + latitude +"\n");
-                    text.append("经度:" + longitude+"\n");
-                    text.append("速度:" + speed+"\n");
-                    text.append("方向:" + bearing+"\n");
-                    text.append("时间:"+System.currentTimeMillis());
-                    locationText.setText(text.toString());
-
-                    String line = latitude + "," + longitude + "," + altitude + "," + speed + "," + bearing;
-                    fGps.append(line, recording && (runTime > 0));
-
-                } else {
-                    //定位失败时，可通过ErrCode（错误码）信息来确定失败的原因，errInfo是错误信息，详见错误码表。
-                    Log.e("AmapError", "location Error, ErrCode:"
-                            + amapLocation.getErrorCode() + ", errInfo:"
-                            + amapLocation.getErrorInfo());
-                }
-            }
-        } catch (Exception e) {
-        }
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        // 停止定位
-        if (null != mlocationClient) {
-            mlocationClient.stopLocation();
-        }
-    }
-
-    /**
-     * 销毁定位
-     */
-    private void destroyLocation() {
-        if (null != mlocationClient) {
-            /**
-             * 如果AMapLocationClient是在当前Activity实例化的，
-             * 在Activity的onDestroy中一定要执行AMapLocationClient的onDestroy
-             */
-            mlocationClient.onDestroy();
-            mlocationClient = null;
-        }
-    }
 
     @Override
     protected void onDestroy() {
-        destroyLocation();
         isDestroy = true;
         super.onDestroy();
     }
