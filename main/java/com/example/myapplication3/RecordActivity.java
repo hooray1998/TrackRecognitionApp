@@ -1,8 +1,10 @@
 package com.example.myapplication3;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -14,6 +16,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
@@ -95,6 +98,11 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
                 saveButton.performClick();
             }
         };
+        //电源键监听
+        final IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
+        final IntentFilter filter2 = new IntentFilter(Intent.ACTION_SCREEN_ON);
+        registerReceiver(mBatInfoReceiver, filter);
+        registerReceiver(mBatInfoReceiver, filter2);
         bindView();
         initSensor();
         mEnd = MediaPlayer.create(this, R.raw.shoot);
@@ -136,9 +144,9 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
         mSensorAccelerometer = sManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mSensorGyroscope = sManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         mSensorMagnetic = sManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        sManager.registerListener(this, mSensorAccelerometer, SensorManager.SENSOR_DELAY_UI);
-        sManager.registerListener(this, mSensorGyroscope, SensorManager.SENSOR_DELAY_UI);
-        sManager.registerListener(this, mSensorMagnetic, SensorManager.SENSOR_DELAY_UI);
+        sManager.registerListener(this, mSensorAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+        sManager.registerListener(this, mSensorGyroscope, SensorManager.SENSOR_DELAY_FASTEST);
+        sManager.registerListener(this, mSensorMagnetic, SensorManager.SENSOR_DELAY_FASTEST);
 
         if(mSensorAccelerometer == null){
             jiasuduText.setText("加速度传感器不支持");
@@ -345,4 +353,21 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
         };
         volumeChangeThread.start();
     }
+
+    private final BroadcastReceiver mBatInfoReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(final Context context, final Intent intent) {
+            final String action = intent.getAction();
+            if(Intent.ACTION_SCREEN_ON.equals(action)) {
+                Log.i("fasd","电源键++++");
+                if(recording) handler.sendEmptyMessage(0);
+                //System.out.println("电源键监听");
+            }
+            if(Intent.ACTION_SCREEN_OFF.equals(action)) {
+                Log.i("fasd","电源键----");
+                if(recording) handler.sendEmptyMessage(0);
+                //System.out.println("电源键监听");
+            }
+        }
+    };
 }
