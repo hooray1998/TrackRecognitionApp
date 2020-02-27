@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -32,6 +33,11 @@ import com.example.myapplication3.tools.FileWriter;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.akexorcist.roundcornerprogressbar.RoundCornerProgressBar;
+import java.util.ArrayList;
+import java.util.Random;
+
+import devlight.io.library.ArcProgressStackView;
 
 public class RecordActivity extends AppCompatActivity implements SensorEventListener {
 
@@ -43,11 +49,16 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
     private Sensor mSensorMagnetic; //地磁场传感器
 
     private TextView infoText;
+    private TextView[] countText;
     private TextView jiasuduText;
     private TextView tuoluoyiText;
     private TextView fangxiangText;
     private Button saveButton;
     private RadioGroup rdGroup;
+    private RoundCornerProgressBar[] accProgress;
+    private RoundCornerProgressBar[] gyrProgress;
+    private ArrayList<ArcProgressStackView.Model> models;
+    private ArcProgressStackView arcProgressStackView;
 
     private float lastTimestamp = 0;
 
@@ -165,10 +176,47 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
         fangxiangText = findViewById(R.id.tv_fangxiang);
 
         infoText = findViewById(R.id.tv_info);
+        countText = new TextView[5];
+        countText[0] = findViewById(R.id.countTv1);
+        countText[1] = findViewById(R.id.countTv2);
+        countText[2] = findViewById(R.id.countTv3);
+        countText[3] = findViewById(R.id.countTv4);
+        countText[4] = findViewById(R.id.countTv5);
 
         saveButton = findViewById(R.id.saveButton);
         rdGroup = findViewById(R.id.radioGroup);
+        accProgress = new RoundCornerProgressBar[3];
+        gyrProgress = new RoundCornerProgressBar[3];
+        accProgress[0] = findViewById(R.id.acc_px);
+        accProgress[1] = findViewById(R.id.acc_py);
+        accProgress[2] = findViewById(R.id.acc_pz);
+        gyrProgress[0] = findViewById(R.id.gyr_px);
+        gyrProgress[1] = findViewById(R.id.gyr_py);
+        gyrProgress[2] = findViewById(R.id.gyr_pz);
 
+        int bgColors[] = new int[]{Color.GRAY, Color.GRAY, Color.GRAY};
+        int mStartColors[] = new int[]{Color.RED, Color.GREEN, Color.BLUE};
+
+        models = new ArrayList<>();
+        models.add(new ArcProgressStackView.Model("X", 25, bgColors[0], mStartColors[0]));
+        models.add(new ArcProgressStackView.Model("Y", 50, bgColors[1], mStartColors[1]));
+        models.add(new ArcProgressStackView.Model("Z", 75, bgColors[2], mStartColors[2]));
+
+        arcProgressStackView = findViewById(R.id.apsv);
+        arcProgressStackView.setModels(models);
+
+
+        for (int i = 0; i < 3; i++) {
+            accProgress[i].setMax(25);
+            gyrProgress[i].setMax(5); // (+-)0.001 ~ 1.0
+
+            //gyrProgress[i].setProgress((float) 0.3);
+        }
+
+        accProgress[1].setMax(100);
+        accProgress[0].setProgress(10);
+        accProgress[1].setReverse(true);
+        accProgress[1].setProgress(-20);
 
         rdGroup.setOnCheckedChangeListener(new OnCheckedChangeListener() {
             @Override
@@ -211,14 +259,11 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
                         countArray.put(curCheck, countArray.get(curCheck) + 1);
                         mEnd.start();
                     }
-                    String countInfo = String.format("直行    : %d\n左转    : %d\n右转    : %d\n左掉头: %d\n右掉头: %d\n",
-                            countArray.get("直行"),
-                            countArray.get("左转"),
-                            countArray.get("右转"),
-                            countArray.get("左掉头"),
-                            countArray.get("右掉头")
-                    );
-                    infoText.setText(countInfo);
+                    countText[0].setText("x" + countArray.get("直行"));
+                    countText[1].setText("x" + countArray.get("左转"));
+                    countText[2].setText("x" + countArray.get("左掉头"));
+                    countText[3].setText("x" + countArray.get("右转"));
+                    countText[4].setText("x" + countArray.get("右掉头"));
 
                     fLinear.close();
                     fAngular.close();
@@ -257,11 +302,13 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
         }
         else if (sensorEvent.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             accelerometerValues = sensorEvent.values.clone();
+            UpdateProgressBar(0, accelerometerValues);
             double curValue = magnitude(accelerometerValues[0], accelerometerValues[1], accelerometerValues[2]);   //计算当前的模
             fLinear.append(accelerometerValues, recording && (runTime > 0));
             jiasuduText.setText("\n加速度:" + Format(curValue, "%04.1f") + "\nx:"+Format(accelerometerValues[0], "%04.1f") + "\ny:" + Format(accelerometerValues[1], "%04.1f") + "\nz:" + Format(accelerometerValues[2], "%04.1f"));
         } else if (sensorEvent.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
             gyroscopeValues = sensorEvent.values.clone();
+            UpdateProgressBar(1, gyroscopeValues);
             fAngular.append(gyroscopeValues, recording && (runTime > 0));
             tuoluoyiText.setText("\n角速度:"  + "\nx:"+Format(gyroscopeValues[0], "%04.1f") + "\ny:" + Format(gyroscopeValues[1], "%04.1f") + "\nz:" + Format(gyroscopeValues[2], "%04.1f"));
         }
@@ -296,29 +343,18 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
         if(angle[0]<0) angle[0] += 360;
         if(angle[1]<0) angle[1] += 360;
         if(angle[2]<0) angle[2] += 360;
+        UpdateProgressBar(2, angle);
 
         fOrientation.append(angle, recording && (runTime > 0));
 
         if(timestamp - lastTimestamp > 1000){
             lastTimestamp = timestamp;
-            fangxiangText.setText("方向:\nx: " + Math.round(angle[0]) +
+            fangxiangText.setText("\n方向:\nx: " + Math.round(angle[0]) +
                     "\ny: " + Math.round(angle[1]) +
                     "\nz: " + Math.round(angle[2]));
         }
     }
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
-            Intent home = new Intent(Intent.ACTION_MAIN);
-            home.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            home.addCategory(Intent.CATEGORY_HOME);
-            startActivity(home);
-            return true;
-        }
-        return super.onKeyDown(keyCode, event);
-    }
 
     public void onVolumeChangeListener()
     {
@@ -370,4 +406,42 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
             }
         }
     };
+
+    private void UpdateProgressBar(int sensor, float[] values){
+        switch (sensor){
+            case 0:
+                setProgressValue(accProgress[0], values[0]);
+                setProgressValue(accProgress[1], values[1]);
+                setProgressValue(accProgress[2], values[2]);
+                break;
+            case 1:
+                setProgressValue(gyrProgress[0], values[0]);
+                setProgressValue(gyrProgress[1], values[1]);
+                setProgressValue(gyrProgress[2], values[2]);
+                break;
+            case 2:
+                setProgressValue(0, values[0]);
+                setProgressValue(1, values[1]);
+                setProgressValue(2, values[2]);
+                arcProgressStackView.invalidate();
+                break;
+
+        }
+    }
+
+    private void setProgressValue(RoundCornerProgressBar progress, float value) {
+        if(value < 0){
+            //progress.setBackgroundColor(Color.GRAY);
+            progress.setReverse(true);
+            progress.setProgress(-value);
+        }
+        else{
+            //progress.setBackgroundColor(Color.BLACK);
+            progress.setReverse(false);
+            progress.setProgress(value);
+        }
+    }
+    private void setProgressValue(int which, float value) {
+        models.get(which).setProgress(value*100/360);
+    }
 }

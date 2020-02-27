@@ -6,17 +6,17 @@ android:orientation="vertical"
 android:padding="5dp">
 
     <Button
-        android:id="@+id/recordButton"
+        android:id="@+id/enterRecordActivity"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_centerVertical="true"
         android:text="记录数据"
         />
     <Button
-        android:id="@+id/predictButton"
+        android:id="@+id/enterPredictActivity"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/recordButton"
+        android:layout_below="@id/enterRecordActivity"
         android:text="预测轨迹"
         />
 

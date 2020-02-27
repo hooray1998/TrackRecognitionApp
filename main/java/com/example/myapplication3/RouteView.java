@@ -48,7 +48,7 @@ public class RouteView extends View {
 
     private void initPaint() {
         mPaint.setAntiAlias(true);          //抗锯齿
-        mPaint.setColor(getResources().getColor(R.color.red));//画笔颜色
+        mPaint.setColor(Color.RED);//画笔颜色
         mPaint.setStyle(Paint.Style.FILL);  //画笔风格
         mPaint.setTextSize(36/totalRatio);             //绘制文字大小，单位px
         mPaint.setStrokeWidth(12/totalRatio);           //画笔粗细

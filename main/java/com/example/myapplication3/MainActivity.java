@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
 import android.content.BroadcastReceiver;
@@ -21,7 +22,8 @@ import androidx.appcompat.app.AppCompatActivity;
 /***
  * 高德定位
  */
-public class MainActivity extends AppCompatActivity {
+public class
+MainActivity extends AppCompatActivity {
 
     private Context mContext;
 
@@ -45,8 +47,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void bindView() {
 
-        recordButton = findViewById(R.id.recordButton);
-        predictButton = findViewById(R.id.predictButton);
+        recordButton = findViewById(R.id.enterRecordActivity);
+        predictButton = findViewById(R.id.enterPredictActivity);
 
         recordButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -72,4 +74,16 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            Intent home = new Intent(Intent.ACTION_MAIN);
+            home.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            home.addCategory(Intent.CATEGORY_HOME);
+            startActivity(home);
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
 }
