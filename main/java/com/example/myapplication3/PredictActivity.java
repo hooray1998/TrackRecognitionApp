@@ -31,6 +31,14 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
     private SensorManager sManager;
     private Sensor mSensorGyroscope;
     private Sensor mSensorAccelerometer;
+    private Sensor mSensorMagnetic; //地磁场传感器
+    //private float[] orientationArray;
+    private float lastAngle;
+    //private long
+
+    private float[] accelerometerValues = new float[3];
+    private float[] magneticFieldValues = new float[3];
+
     private long lastGTimestamp;
 
 
@@ -76,12 +84,17 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
         sManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         mSensorGyroscope = sManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         mSensorAccelerometer = sManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        sManager.registerListener(this, mSensorGyroscope, SensorManager.SENSOR_DELAY_UI);
+        mSensorMagnetic = sManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        //sManager.registerListener(this, mSensorGyroscope, SensorManager.SENSOR_DELAY_UI);
         sManager.registerListener(this, mSensorAccelerometer, SensorManager.SENSOR_DELAY_UI);
+        sManager.registerListener(this, mSensorMagnetic, SensorManager.SENSOR_DELAY_UI);
 
         TextView sensorText = (TextView) findViewById(R.id.infoText);
         List<Sensor> allSensors = sManager.getSensorList(Sensor.TYPE_ALL);
         StringBuilder sb = new StringBuilder();
+        if(mSensorMagnetic == null){
+            showToast("Error:地磁传感器不支持");
+        }
 
         sb.append("此手机有" + allSensors.size() + "个传感器，分别有：\n\n");
         for(Sensor s:allSensors){
@@ -123,13 +136,13 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
         sb.append("其余都是未知传感器");
         sensorText.setText(sb.toString());
 
+
         if(mSensorGyroscope == null){
-            showToast("角速度传感器不支持");
+            showToast("Error:角速度传感器不支持");
         }
         if(mSensorAccelerometer == null){
-            showToast("计步器传感器不支持");
+            showToast("Error:加速度传感器不支持");
         }
-
 
     }
 
@@ -143,6 +156,7 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
             @Override
             public void onClick(View view) {
                 if(!recording){
+                    speed = 0;
                     canvas.size = 0;
                     sensorDataSize = 0;
                     lasttime = System.currentTimeMillis();
@@ -150,13 +164,13 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
                     lastGTimestamp = lasttime;
                     canvas.invalidate();
                     sumDegress = 0;
-                    startButton.setText("stop");
+                    lastAngle = -1;
+                    startButton.setText("停止");
                 }
                 else{//结束
-                    startButton.setText("start");
-                    infoText.append("sum:" + sumDegress + "\n" + "\n");
+                    startButton.setText("预测轨迹");
+                    //infoText.append("sum:" + sumDegress + "\n" + "\n");
                     updateScroll();
-                    speed = 0;
                 }
                 recording = !recording;
             }
@@ -207,22 +221,20 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
 
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
-        if(!recording) return;
         //infoText.append("one step");
         if (sensorEvent.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            //appendSensorData(sensorEvent.values.clone());
-            //startButton.setText(sensorEvent.values[0] + "");
-            //infoText.append("----" + sensorEvent.values[0]);
-            //if(sensorEvent.values[0] == 1.0f){
-                //infoText.append("one step");
-            //}
-
-            float curValue = magnitude(sensorEvent.values.clone());   //计算当前的模
-            //calStep(curValue);
-            appendGSensorData(curValue);
+            accelerometerValues = sensorEvent.values.clone();
+            if(!recording) return;
+            appendGSensorData(magnitude(accelerometerValues));
         }
         else if (sensorEvent.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+            if(!recording) return;
             appendSensorData(sensorEvent.values.clone());
+        }
+        else if (sensorEvent.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+            magneticFieldValues = sensorEvent.values.clone();
+            if(!recording) return;
+            calculateOrientation(sensorEvent.timestamp);
         }
 
     }
@@ -242,6 +254,7 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
 
         float distance = (float) ((speed * difftime/1000) * scale);
 
+        infoText.append("\ndata:" + distance + "," + changeDegress);
         canvas.appendLine(distance, changeDegress);
     }
 
@@ -313,7 +326,7 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
         last = gSensorData[0];
         int newLen2 = 1;
         for(int i = 1; i < newLen;i++){
-            if(Math.abs(gSensorData[i] - last) > 5){
+            if(Math.abs(gSensorData[i] - last) > 3){
                 gSensorData[newLen2++] = last;
             }
             last = gSensorData[i];
@@ -344,14 +357,36 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
 
     }
 
-    public void updateSpeed() {
-        long timestamp = System.currentTimeMillis();
-        speed = (float) (1000.0/(timestamp - lastTimestamp));
-        infoText.append("cur speed:" + speed +" "+(timestamp - lastTimestamp) + " ");
-        lastTimestamp = timestamp;
-    }
     //向量求模
     public float magnitude(float[] values) {
         return  (float)Math.sqrt(values[0] * values[0] + values[1] * values[1] + values[2] * values[2]);
+    }
+
+    private void calculateOrientation(long timestamp) {
+        float[] values = new float[3];
+        float[] R = new float[9];
+        SensorManager.getRotationMatrix(R, null, accelerometerValues,
+                magneticFieldValues);
+        SensorManager.getOrientation(R, values);
+
+        float[] angle = new float[3];
+        angle[0] = (float) Math.toDegrees(values[0]);
+        angle[1] = (float) Math.toDegrees(values[1]);
+        angle[2] = (float) Math.toDegrees(values[2]);
+
+        if(angle[0]<0) angle[0] += 360;
+        if(angle[1]<0) angle[1] += 360;
+        if(angle[2]<0) angle[2] += 360;
+
+        //appendOrientation(angle[0]);
+        //if(timestamp - lastTimestamp >= 100){
+            //lastTimestamp = timestamp;
+            //if(lastAngle == -1) lastAngle = angle[0];
+            updateRouteCanvas(angle[0]);
+            //lastAngle = angle[0];
+        //}
+    }
+
+    private void appendOrientation(float v) {
     }
 }

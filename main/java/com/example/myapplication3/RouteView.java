@@ -7,6 +7,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -21,6 +22,8 @@ public class RouteView extends View {
     public int size;
     private double lastFingerDis;
     private float totalRatio = 1;
+    private float initDegree;
+    private float lastDegress;
 
     public RouteView(Context context) {
         super(context);
@@ -55,9 +58,21 @@ public class RouteView extends View {
     }
 
     public void appendLine(float distance, float degress){
+        if(size==0){
+            lastDegress = 0;
+            initDegree = degress;
+        }
         if(size == MAX_SIZE) return;
         distanceList[size] = distance;
-        degressList[size] = degress;
+        float d = degress - lastDegress;
+        while(d<-180){
+            d += 360;
+        }
+        while(d>180){
+            d -= 360;
+        }
+        degressList[size] = d;
+        lastDegress = degress;
         size += 1;
         invalidate();
     }
@@ -74,6 +89,9 @@ public class RouteView extends View {
         mPaint.setTextSize(36);             //绘制文字大小，单位px
         mPaint.setStrokeWidth(12);           //画笔粗细
         mPaint.setColor(Color.GRAY);//画笔颜色
+
+
+
         canvas.drawText("比例:  I——I " + 5 /totalRatio + "m", 50,50, mPaint);
 
         initPaint();
@@ -88,7 +106,7 @@ public class RouteView extends View {
         for (int i = 0; i < size; i++) {
             canvas.drawLine(0,0, 0, -distanceList[i], mPaint);
             canvas.translate(0, -distanceList[i]);
-            canvas.rotate(-degressList[i]);
+            canvas.rotate(degressList[i]);
         }
         //canvas.rotate(360/count,0f,0f); //旋转画纸
         /*
