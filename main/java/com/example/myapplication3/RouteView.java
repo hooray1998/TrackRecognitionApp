@@ -22,8 +22,6 @@ public class RouteView extends View {
     public int size;
     private double lastFingerDis;
     private float totalRatio = 1;
-    private float initDegree;
-    private float lastDegress;
 
     public RouteView(Context context) {
         super(context);
@@ -57,22 +55,10 @@ public class RouteView extends View {
         mPaint.setStrokeWidth(12/totalRatio);           //画笔粗细
     }
 
-    public void appendLine(float distance, float degress){
-        if(size==0){
-            lastDegress = 0;
-            initDegree = degress;
-        }
+    public void appendLine(float degress, float distance){
         if(size == MAX_SIZE) return;
+        degressList[size] = degress;
         distanceList[size] = distance;
-        float d = degress - lastDegress;
-        while(d<-180){
-            d += 360;
-        }
-        while(d>180){
-            d -= 360;
-        }
-        degressList[size] = d;
-        lastDegress = degress;
         size += 1;
         invalidate();
     }
@@ -104,9 +90,9 @@ public class RouteView extends View {
         canvas.save();
         //canvas.rotate(90, 0, 0);
         for (int i = 0; i < size; i++) {
+            canvas.rotate(degressList[i]);
             canvas.drawLine(0,0, 0, -distanceList[i], mPaint);
             canvas.translate(0, -distanceList[i]);
-            canvas.rotate(degressList[i]);
         }
         //canvas.rotate(360/count,0f,0f); //旋转画纸
         /*
