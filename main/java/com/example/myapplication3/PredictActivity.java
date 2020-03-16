@@ -1,15 +1,19 @@
 package com.example.myapplication3;
 
 import androidx.appcompat.app.AppCompatActivity;
+import com.example.myapplication3.tools.FileWriter;
 
+import android.content.Context;
 import android.graphics.Canvas;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ScrollView;
@@ -19,49 +23,52 @@ import android.widget.Toast;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class PredictActivity extends AppCompatActivity implements SensorEventListener {
+    private Context mContext;
 
     private Button startButton;
     private TextView infoText;
     private ScrollView scrollView;
     private RouteView canvas;
+    private final double scale =  13; //比例 1step -> 画布上2.5个单位长度
 
-    private boolean recording;
 
     private SensorManager sManager;
     private Sensor mSensorAccelerometer;
     private Sensor mSensorMagnetic; //地磁场传感器
-    //private float[] orientationArray;
 
     private float[] accelerometerValues = new float[3];
     private float[] magneticFieldValues = new float[3];
+    private MediaPlayer mClock;
 
+    private FileWriter fLinear;
+    private FileWriter fOrientation;
 
-    private boolean motiveState = true;
-    private float lstValue = (float) 9.8;
-
-    private Timer timer;
-    private Handler handler;
-    private final double scale =  13; //比例 1step -> 画布上2.5个单位长度
-    private float sumStandard;
-    private float sumDegress = 0;
-    private int sumCount = 0;
+    private int[] stepArr;
+    private int curStep;
     private float[] degressArr;
-    private float[] stepArr;
-    private int degressSize = 0;
-    private final int MaxSize = 1000;
-    private int goStart = 0;
-    private int goEnd = 0;
-    private boolean go = true;
-    private final float LIMIT = 15;
-    private float lastGoOrient;
-    private float curValue;
-    private int allStep;
+    private int degreeSize;
+    private final int MaxSize = 10000;
 
-    private float lastChangeDegress;
+    private float[] oneSecondDegreeArr;
+    private int oneSecondDegreeLen;
+    private long oneSecondDegreeStartTime;
+
+    private long lastStepTime;
+    private boolean lastStepUp;
+    private final int MinStepTime = 300;
+
+    private int waitIndex;
+    private int goLen;
+    private boolean lastIsGo;
+    private boolean recording;
+	private float lastStepValue;
+
+    private final int straightMinTime = 5;
+    private final int limit = 15; //直行偏差在均值的+-15度以内
+    private final float score = (float) 0.8; //5s中要有80%的点符合limit
+    private float lastDegree = 0; //初始的轨迹偏转角
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,38 +76,22 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
         setContentView(R.layout.activity_predict);
         bindView();
 
-        handler = new Handler(){
-            @Override
-            public void handleMessage(Message msg){
-                if(msg.what == 666){
-                    //TODO: 将sum数据append到gData中
-                    //infoText.append("=>" + msg.obj + "\n");
-                    startButton.setText("停止 -步数："+allStep+"/"+msg.obj+"s");
+        mContext = getApplicationContext();
+        fLinear = new FileWriter(mContext);
+        fOrientation = new FileWriter(mContext);
 
-                }
-            }
-        };
-
-
-        recording = false;
-
+        oneSecondDegreeArr = new float[100];
         degressArr = new float[MaxSize];
-        stepArr = new float[MaxSize];
+        stepArr = new int[MaxSize];
 
+        mClock = MediaPlayer.create(this, R.raw.clock);
 
         sManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-
         mSensorAccelerometer = sManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mSensorMagnetic      = sManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        //case Sensor.TYPE_STEP_COUNTER:
-        //case Sensor.TYPE_STEP_DETECTOR:
+        sManager.registerListener(this, mSensorAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        sManager.registerListener(this, mSensorMagnetic, SensorManager.SENSOR_DELAY_NORMAL);
 
-        sManager.registerListener(this, mSensorAccelerometer, SensorManager.SENSOR_DELAY_UI);
-        sManager.registerListener(this, mSensorMagnetic, SensorManager.SENSOR_DELAY_UI);
-
-        TextView sensorText = (TextView) findViewById(R.id.infoText);
-        List<Sensor> allSensors = sManager.getSensorList(Sensor.TYPE_ALL);
-        StringBuilder sb = new StringBuilder();
         if(mSensorMagnetic == null){
             showToast("Error:地磁传感器不支持");
         }
@@ -121,96 +112,76 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
             public void onClick(View view) {
                 if(!recording){ // 开始
                     canvas.size = 0;
-                    degressSize = 0;
-                    allStep = 0;
-                    infoText.setText("");
                     canvas.invalidate();
+                    infoText.setText("");
                     startButton.setText("停止");
-                    timer = new Timer();
-                    timer.schedule(new TimerTask() {
-                        @Override
-                        public void run() {
+                    initVariable();
+                    recording = true;
+                    mClock.setLooping(true);
+                    mClock.start();
 
-                            if(degressSize == MaxSize) return;
-                            stepArr[degressSize] = allStep;
-                            degressArr[degressSize++] = sumDegress/sumCount;
-                            sumCount = 0;
-                            sumDegress = 0;
-
-                            Message msg = new Message();
-                            msg.what = 666;
-                            msg.obj = degressSize;
-                            handler.sendMessage(msg);
-                        }
-                    }, 1000, 1000);
+                    long t = System.currentTimeMillis();
+                    fLinear.create(t + "_predict_Linear");
+                    fOrientation.create(t + "_predict_Orientation");
                 }
                 else{ //结束
+                    mClock.pause();
+                    mClock.setLooping(false);
+                    mClock.seekTo(0);
+                    recording = false;
+                    updateRoute();
                     startButton.setText("预测轨迹");
-                    timer.cancel();
-                    calAllDegress();
                     updateScroll();
+                    fLinear.close();
+                    fOrientation.close();
                 }
-                recording = !recording;
             }
         });
 
     }
 
+    public void initVariable() {
+        lastStepTime = -MinStepTime;
+        lastStepUp = false;
+        lastStepValue = 10000;
+        oneSecondDegreeLen = 0;
+        waitIndex = straightMinTime;
+        lastIsGo = false;
+
+        curStep = 0;
+        degreeSize = 0;
+        lastDegree = 0;
+    }
+
+
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
-        //infoText.append("one step");
         if(!recording) return;
+
+        long curTime = System.currentTimeMillis();
         if (sensorEvent.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             accelerometerValues = sensorEvent.values.clone();
-            //TODO: 根据加速度预测步数, 阈值可调
-            curValue = (magnitude(accelerometerValues));
-            calStep();
+            fLinear.append(accelerometerValues, recording);
+            updateStep(curTime, magnitude(accelerometerValues));
         }
         else if (sensorEvent.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
             magneticFieldValues = sensorEvent.values.clone();
-            calculateOrientation(sensorEvent.timestamp);
+            float[] angle = calculateOrientation();
+            fOrientation.append(angle, recording);
+            appendCurSecondDegree(curTime, angle);
         }
 
     }
 
-    //TODO:
-    //1. 使用步数而不是speed x time
-    //2. 使用当前方向
-    public void updateRouteCanvas(float changeDegress, int goStartIndex, int goEndIndex){
-        float distance = (float) ( (stepArr[goEndIndex] -stepArr[goStartIndex]) * scale);
-
-        //infoText.append("\npaint=========>:" + changeDegress + "," + distance);
-        canvas.appendLine(changeDegress, distance);
+    public void updateRouteCanvas(float curDegree, float distance){
+        //infoText.append("\npaint=========>:" + curDegree + "," + distance);
+        float changeDegress = diffDegree(curDegree, lastDegree);
+        lastDegree = curDegree;
+        canvas.appendLine(changeDegress, (float) (distance * scale));
     }
 
-    public void calStep() {
-        double range = 5;   //设定一个精度范围
-        //向上加速的状态
-        if (motiveState == true) {
-            if (curValue >= lstValue) lstValue = curValue;
-            else {
-                //检测到一次峰值
-                if (Math.abs(curValue - lstValue) > range) {
-                    motiveState = false;
-                }
-            }
-        }
-        //向下加速的状态
-        if (motiveState == false) {
-            if (curValue <= lstValue) lstValue = curValue;
-            else {
-                if (Math.abs(curValue - lstValue) > range) {
-                    //检测到一次峰值
-                    allStep += 1;
-                    //startButton.setText("STOP:" + allStep);
-                    motiveState = true;
-                }
-            }
-        }
 
-    }
-
-    private void calculateOrientation(long timestamp) {
+    private float[] calculateOrientation() {
         float[] values = new float[3];
         float[] R = new float[9];
         SensorManager.getRotationMatrix(R, null, accelerometerValues,
@@ -222,14 +193,11 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
         angle[1] = (float) Math.toDegrees(values[1]);
         angle[2] = (float) Math.toDegrees(values[2]);
 
-        //if(angle[0]<0) angle[0] += 360;
-        //if(angle[1]<0) angle[1] += 360;
-        //if(angle[2]<0) angle[2] += 360;
+        if(angle[0]<0) angle[0] += 360;
+        if(angle[1]<0) angle[1] += 360;
+        if(angle[2]<0) angle[2] += 360;
 
-        //updateRouteCanvas(angle[0]);
-        if(sumCount == 0) sumStandard = angle[0];
-        sumDegress += transform(sumStandard, angle[0]);
-        sumCount += 1;
+        return angle;
     }
 
     //向量求模
@@ -253,6 +221,35 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
         });
     }
 
+    private void updateStep(long t, float g) {
+        boolean Up = (g > lastStepValue);
+        //NOTE: 顶点判定
+        if(lastStepUp && (!Up)){
+            //NOTE: 时间和赋值判定
+            //infoText.append(" G=" + lastStepValue + "\n");
+            if((t-lastStepTime)>MinStepTime && lastStepValue>10.5){
+                lastStepTime = t;
+                curStep += 1;
+            }
+        }
+        lastStepUp = Up;
+        lastStepValue = g;
+    }
+
+    public void appendCurSecondDegree(long time, float[] oriValues) {
+        // fOrient.append(oriValues);
+        if(oneSecondDegreeLen==0){
+            oneSecondDegreeStartTime = time;
+        }else if(time - oneSecondDegreeStartTime >= 1000){
+            stepArr[degreeSize] = curStep;
+            degressArr[degreeSize++] = averageOneSecond();
+            updateRoute();
+            oneSecondDegreeStartTime = time;
+            oneSecondDegreeLen = 0;
+        }
+        oneSecondDegreeArr[oneSecondDegreeLen++] = oriValues[0];
+    }
+
     public float transform(float standard, float needTransform){
         //转换needTransform到与standard的差距在180之内
         if(Math.abs(standard - needTransform) <= 180){
@@ -264,7 +261,7 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
         }
     }
 
-    public float diffDegress(float a, float b){
+    public float diffDegree(float a, float b){
         // 返回 -180 ~ 180
         float diff = a-b;
         while(diff<-180){
@@ -276,103 +273,83 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
         return diff;
     }
 
-    public float calGoOrientAvg(){
+    public float averageOneSecond(){
         float sum = 0;
-        for(int i=goStart;i<goEnd;i++){
-            sum += transform(degressArr[goStart], degressArr[i]);
+        for(int i=0;i<oneSecondDegreeLen;i++){
+            sum += transform(oneSecondDegreeArr[0], oneSecondDegreeArr[i]);
         }
-        return sum/(goEnd - goStart);
-        //return degressArr[(goEnd-goStart)/2];
+        if(oneSecondDegreeLen == 0) return 0;
+        // System.out.println("avg:" + sum/oneSecondDegreeLen);
+        return sum/oneSecondDegreeLen;
     }
 
-    public float calChangeDegress(int index) {
+    /**
+     * 计算end索引前面的size个点的平均值，不包括end
+     *
+     * @param end 结束的点，计算时不包含
+     * @param size 点的个数
+     * @return 返回平均值
+     */
+    public float averageDegreeArr(int end, int size) {
+        if(end < size){
+            //System.out.println("error in averageDegreeArr");
+            return 0;
+        }
         float sum = 0;
-        for (int i = index - 3; i < index; i++) {
-            float newd = transform(degressArr[index-3], degressArr[i]);
-            sum += newd;
+        for(int i=end-size;i<end;i++){
+            sum += transform(degressArr[end-size], degressArr[i]);
         }
-        sum = sum / 3;
-        return diffDegress(sum, lastGoOrient);
-
+        return sum/size;
     }
 
-    public void calAllDegress(){
-        if(degressSize<=3) return;
-
-        goStart = 0;
-        goEnd = 0;
-        go = true;
-        lastGoOrient = 666;
-        for (int i=0; i<degressSize;i++){
-            //infoText.append(String.format("%2d : %f\n",  i, degressArr[i]));
-        }
-        for (int i=3; i<degressSize;i++){
-            if(Math.abs(diffDegress(degressArr[i], degressArr[i-3])) < LIMIT){//该3s为直线行驶
-                if(!go){//如果正在拐弯，认为拐弯结束
-                    float diff = calChangeDegress(i);
-                    if(Math.abs(diff)>30){//如果总拐弯度数大于30，认为是有效的拐弯
-
-                        infoText.append(String.format("%2d ~ %2d 直行 方向%f°\n",goStart, goEnd, lastGoOrient));
-                        updateRouteCanvas(lastChangeDegress, goStart, goEnd);
-                        goStart = i-1;
-                        infoText.append(String.format("%2d ~ %2d", goEnd, goStart));
-                    }
-                }
-
-
-                go = true;
-            }
-            else {//当前剧烈转弯
-                if(go){//如果正在直行，认为开始转弯了
-                    goEnd = i-1;
-
-                    float avgOrient = calGoOrientAvg();
-                    float diffGo = diffDegress(avgOrient, lastGoOrient);
-
-                    if(lastGoOrient != 666){
-                        infoText.append(String.format(" %s转 %f°\n", (diffGo>0)?'右':'左', Math.abs(diffGo)));
-                        lastChangeDegress = diffGo;
-                    }
-                    else{
-                        lastChangeDegress = 0;
-                    }
-                    lastGoOrient = avgOrient;
-                }
-                else{//认为转弯在继续
-
-                }
-                go = false;
+    public boolean judgeStraight() {
+        float average = averageDegreeArr(waitIndex, straightMinTime);
+        int yes = 0;
+        for(int i=waitIndex-straightMinTime;i<waitIndex;i++){
+            if(Math.abs(diffDegree(degressArr[i], average)) <= limit){
+                yes += 1;
             }
         }
-        if(go) {
-            goEnd = degressSize;
-            float avgOrient = calGoOrientAvg();
-            float diffGo = diffDegress(avgOrient, lastGoOrient);
-
-            if (lastGoOrient != 666) {
-                infoText.append(String.format(" %s转 %f°\n", (diffGo > 0) ? '右' : '左', Math.abs(diffGo)));
-                lastChangeDegress = diffGo;
-            }
-            else{
-                lastChangeDegress = 0;
-            }
-            lastGoOrient = avgOrient;
-
-            infoText.append(String.format("%2d ~ %2d 直行 方向%f°\n", goStart, goEnd, lastGoOrient));
-            updateRouteCanvas(lastChangeDegress, goStart, goEnd-1);
-        }else{//最后仍在转弯
-
-            float avgOrient = calGoOrientAvg();
-            lastGoOrient = avgOrient;
-
-            infoText.append(String.format("%2d ~ %2d 直行 方向%f°\n", goStart, goEnd, lastGoOrient));
-            updateRouteCanvas(lastChangeDegress, goStart, goEnd);
-        }
-
-//NOTE:
-//每次遇到剧烈转弯的时候计算之前直行的角度,以及与上一次直行的差值作为上一次转弯的角度
-        //如果不是真实的转弯需要再次计算一次
-        //如果是真实的转弯输出直行的范围，和转弯的时间段
-
+        return yes/straightMinTime >= score;
     }
+
+    public void updateRoute() {
+        //当直行中断后的几秒并不需要判断,直接跳过
+        //如果结束了，上一次还是直行的话也要输出
+        if(waitIndex != degreeSize && recording){
+            return;
+        }
+        //NOTE:此时waitIndex 等于 degreeSize ，也就是最后一个(当前处理的)点的索引+1
+        boolean curIsGo = false;
+        if(recording){
+            curIsGo = judgeStraight();
+        }
+
+        if(curIsGo && lastIsGo){
+            goLen += 1;
+        }else if(curIsGo){
+            goLen = 5;
+        }else if(lastIsGo){
+            float average = averageDegreeArr(waitIndex-1, goLen);
+            int distance =  diffStep(waitIndex-1, goLen) * 2; //一圈为2米
+            //System.out.println(String.format("直行：%d ~ %dS, 距离: %d 方向:%f",waitIndex-goLen-1, waitIndex-1, distance, average));
+            infoText.append(String.format("直行: %3d ~ %3ds, 距离: %3dm 方向: %3f°\n",waitIndex-goLen-1, waitIndex-1, distance, average));
+            updateRouteCanvas(average, distance);
+            waitIndex += 4;
+        }
+
+        lastIsGo = curIsGo;
+        waitIndex += 1;
+    }
+
+    private int diffStep(int end, int size) {
+        Log.d("stepArr:", degreeSize + " " + end + " " + size + " " + stepArr[degreeSize-1]);
+        if(end >= degreeSize)
+            end = degreeSize - 1;
+        if(end < size){
+            size = end;
+        }
+        return stepArr[end] - stepArr[end-size];
+    }
+
 }

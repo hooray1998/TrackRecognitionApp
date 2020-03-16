@@ -49,10 +49,11 @@ public class RouteView extends View {
 
     private void initPaint() {
         mPaint.setAntiAlias(true);          //抗锯齿
-        mPaint.setColor(Color.RED);//画笔颜色
+        mPaint.setColor(Color.BLUE);//画笔颜色
         mPaint.setStyle(Paint.Style.FILL);  //画笔风格
         mPaint.setTextSize(36/totalRatio);             //绘制文字大小，单位px
         mPaint.setStrokeWidth(12/totalRatio);           //画笔粗细
+        mPaint.setStrokeCap(Paint.Cap.ROUND);
     }
 
     public void appendLine(float degress, float distance){
@@ -80,7 +81,6 @@ public class RouteView extends View {
 
         canvas.drawText("比例:  I——I " + 5 /totalRatio + "m", 50,50, mPaint);
 
-        initPaint();
 
 
         canvas.translate(canvas.getWidth()/2, canvas.getHeight()/2); //将位置移动画纸的坐标点:150,150
@@ -89,10 +89,30 @@ public class RouteView extends View {
         //使用path绘制路径文字
         canvas.save();
         //canvas.rotate(90, 0, 0);
+        mPaint.setStrokeWidth(32/totalRatio);           //画笔粗细
+        mPaint.setStrokeCap(Paint.Cap.SQUARE);
+        mPaint.setColor(Color.GREEN);//画笔颜色
+        if(size>0) canvas.drawPoint(0,0,mPaint);
+
+
+        initPaint();
         for (int i = 0; i < size; i++) {
+            initPaint();
             canvas.rotate(degressList[i]);
             canvas.drawLine(0,0, 0, -distanceList[i], mPaint);
             canvas.translate(0, -distanceList[i]);
+            mPaint.setColor(Color.RED);//画笔颜色
+            mPaint.setStrokeWidth(22/totalRatio);           //画笔粗细
+            canvas.drawPoint(0,0,mPaint);
+        }
+
+        mPaint.setStrokeWidth(28/totalRatio);           //画笔粗细
+        mPaint.setColor(Color.RED);//画笔颜色
+        mPaint.setStrokeCap(Paint.Cap.ROUND);
+        if(size>0){
+            canvas.drawPoint(0,0,mPaint);
+            canvas.drawLine(0,0,-22/totalRatio,22/totalRatio,mPaint);
+            canvas.drawLine(0,0,22/totalRatio,22/totalRatio,mPaint);
         }
         //canvas.rotate(360/count,0f,0f); //旋转画纸
         /*
@@ -159,14 +179,14 @@ public class RouteView extends View {
                         currentStatus = STATUS_ZOOM_IN;
                     }
                     // 进行缩放倍数检查，最大只允许将图片放大4倍，最小可以缩小到初始化比例
-                    if ((currentStatus == STATUS_ZOOM_OUT && totalRatio < 4)
-                            || (currentStatus == STATUS_ZOOM_IN && totalRatio > 0.1)) {
+                    if ((currentStatus == STATUS_ZOOM_OUT && totalRatio <= 5)
+                            || (currentStatus == STATUS_ZOOM_IN && totalRatio >= 0.01)) {
                         float scaledRatio = (float) (fingerDis / lastFingerDis);
                         totalRatio = totalRatio * scaledRatio;
-                        if (totalRatio > 10) {
-                            totalRatio = 10;
-                        } else if (totalRatio < 0.1) {
-                            totalRatio = (float) 0.1;
+                        if (totalRatio > 5) {
+                            totalRatio = 5;
+                        } else if (totalRatio < 0.01) {
+                            totalRatio = (float) 0.01;
                         }
                         // 调用onDraw()方法绘制图片
                         invalidate();
