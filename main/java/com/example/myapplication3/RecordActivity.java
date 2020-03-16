@@ -15,6 +15,7 @@ import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
@@ -27,10 +28,14 @@ import android.widget.RadioGroup.OnCheckedChangeListener;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.myapplication3.tools.FileWriter;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import com.akexorcist.roundcornerprogressbar.RoundCornerProgressBar;
@@ -94,6 +99,7 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
     public RecordActivity() {
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -115,7 +121,6 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
         registerReceiver(mBatInfoReceiver, filter);
         registerReceiver(mBatInfoReceiver, filter2);
         bindView();
-        initSensor();
         mEnd = MediaPlayer.create(this, R.raw.shoot);
         mClock = MediaPlayer.create(this, R.raw.ready_run);
 
@@ -128,10 +133,6 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
         countArray.put("左掉头", 0);
         countArray.put("右转", 0);
         countArray.put("右掉头", 0);
-
-        fLinear = new FileWriter(mContext);
-        fAngular = new FileWriter(mContext);
-        fOrientation = new FileWriter(mContext);
 
         /**
          * 动态获取存储权限，Android 6.0 新特性，一些保护权限，除了要在AndroidManifest中声明权限，还要使用如下代码动态获取
@@ -148,6 +149,32 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
                 }
             }
         }
+
+        Log.d("===========>","--------------------------------------------------");
+        String state = Environment.getExternalStorageState();
+        File downFolder = mContext.getExternalFilesDir( Environment.DIRECTORY_DOWNLOADS );
+        Log.d("===========>","--------------------------------------------------"+state);
+        if(state.equals("mounted")){
+            Log.d( "++++++++++>", "state="+ state + ";\nexternalFiles=" + downFolder);
+            try {
+                FileOutputStream fileOutputStream = new FileOutputStream( new File( downFolder, "测试文件存储能力.txt" ) );
+                fileOutputStream.write("甜甜小仙女".getBytes());
+                fileOutputStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        else{
+            showToast("不能使用外部存储目录");
+            return;
+        }
+        Log.d("===========>","--------------------------------------------------");
+
+        fLinear = new FileWriter(mContext);
+        fAngular = new FileWriter(mContext);
+        fOrientation = new FileWriter(mContext);
+
+        initSensor();
     }
 
     private void initSensor() {
@@ -155,9 +182,9 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
         mSensorAccelerometer = sManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mSensorGyroscope = sManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         mSensorMagnetic = sManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        sManager.registerListener(this, mSensorAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
-        sManager.registerListener(this, mSensorGyroscope, SensorManager.SENSOR_DELAY_FASTEST);
-        sManager.registerListener(this, mSensorMagnetic, SensorManager.SENSOR_DELAY_FASTEST);
+        sManager.registerListener(this, mSensorAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        sManager.registerListener(this, mSensorGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
+        sManager.registerListener(this, mSensorMagnetic, SensorManager.SENSOR_DELAY_NORMAL);
 
         if(mSensorAccelerometer == null){
             jiasuduText.setText("加速度传感器不支持");
@@ -401,7 +428,7 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
             }
             if(Intent.ACTION_SCREEN_OFF.equals(action)) {
                 Log.i("fasd","电源键----");
-                if(recording) handler.sendEmptyMessage(0);
+                if(!recording) handler.sendEmptyMessage(0);
                 //System.out.println("电源键监听");
             }
         }

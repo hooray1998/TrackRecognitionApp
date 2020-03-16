@@ -1,7 +1,9 @@
 package com.example.myapplication3.tools;
 
 import android.content.Context;
+import android.os.Environment;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -12,10 +14,19 @@ public class FileWriter {
     FileOutputStream file;
     public   boolean empty;
     String curFilename;
+    File downFolder;
 
     public FileWriter(Context mContext) {
         super();
         this.mContext = mContext;
+        downFolder = mContext.getExternalFilesDir( Environment.DIRECTORY_DOWNLOADS );
+        try {
+            FileOutputStream fileOutputStream = new FileOutputStream( new File( downFolder, "测试文件存储能力.txt" ) );
+            fileOutputStream.write("甜甜小仙女".getBytes());
+            fileOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /*
@@ -30,7 +41,8 @@ public class FileWriter {
 
     public void realCreate(){
         try {
-            file = mContext.openFileOutput(curFilename, Context.MODE_APPEND);
+            //file = mContext.openFileOutput(curFilename, Context.MODE_APPEND);
+            file = new FileOutputStream( new File( downFolder, curFilename ) );
             empty = false;
         } catch (FileNotFoundException e) {
             e.printStackTrace();

@@ -304,7 +304,7 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
         go = true;
         lastGoOrient = 666;
         for (int i=0; i<degressSize;i++){
-            infoText.append(String.format("%2d : %f\n",  i, degressArr[i]));
+            //infoText.append(String.format("%2d : %f\n",  i, degressArr[i]));
         }
         for (int i=3; i<degressSize;i++){
             if(Math.abs(diffDegress(degressArr[i], degressArr[i-3])) < LIMIT){//该3s为直线行驶
