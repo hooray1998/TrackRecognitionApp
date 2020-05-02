@@ -20,13 +20,11 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.List;
 
 public class PredictActivity extends AppCompatActivity implements SensorEventListener {
     private Context mContext;
 
+    private long startTime;
     private Button startButton;
     private TextView infoText;
     private ScrollView scrollView;
@@ -49,7 +47,7 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
     private int curStep;
     private float[] degressArr;
     private int degreeSize;
-    private final int MaxSize = 10000;
+    private final int MaxSize = 216000;//6hx60x60 = 36000x6 = 216000s
 
     private float[] oneSecondDegreeArr;
     private int oneSecondDegreeLen;
@@ -59,9 +57,10 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
     private boolean lastStepUp;
     private final int MinStepTime = 300;
 
+    //直行区间总是>=5s
     private int waitIndex;
-    private int goLen;
-    private boolean lastIsGo;
+    private int goLen;//当前秒是否在直行(>=5),以及直行了多少秒了(总是大于等于5),因为5s内不算一段有效的直行
+    private boolean lastIsGo;//上一秒是否在直行区间内(不是前五秒)
     private boolean recording;
 	private float lastStepValue;
 
@@ -120,9 +119,9 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
                     mClock.setLooping(true);
                     mClock.start();
 
-                    long t = System.currentTimeMillis();
-                    fLinear.create(t + "_predict_Linear");
-                    fOrientation.create(t + "_predict_Orientation");
+                    startTime = System.currentTimeMillis();
+                    fLinear.create(startTime + "_predict_Linear");
+                    fOrientation.create(startTime + "_predict_Orientation");
                 }
                 else{ //结束
                     mClock.pause();
@@ -159,6 +158,7 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
         if(!recording) return;
 
         long curTime = System.currentTimeMillis();
+        startButton.setText((int)((curTime-startTime)/1000) + "s "+curStep*2+"m");
         if (sensorEvent.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             accelerometerValues = sensorEvent.values.clone();
             fLinear.append(accelerometerValues, recording);
@@ -238,7 +238,7 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
 
     public void appendCurSecondDegree(long time, float[] oriValues) {
         // fOrient.append(oriValues);
-        if(oneSecondDegreeLen==0){
+        if(degreeSize==0 && oneSecondDegreeLen==0){
             oneSecondDegreeStartTime = time;
         }else if(time - oneSecondDegreeStartTime >= 1000){
             stepArr[degreeSize] = curStep;
@@ -302,6 +302,10 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
         return sum/size;
     }
 
+    /**
+     * 判断当前秒为终点的五秒的区间是否是直的
+     * @return true/false
+     */
     public boolean judgeStraight() {
         float average = averageDegreeArr(waitIndex, straightMinTime);
         int yes = 0;
@@ -313,9 +317,21 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
         return yes/straightMinTime >= score;
     }
 
+    /**
+     * 每有了1s的角度数据后就判断是否在直行区间
+     */
     public void updateRoute() {
-        //当直行中断后的几秒并不需要判断,直接跳过
         //如果结束了，上一次还是直行的话也要输出
+        //
+        //思路:
+        //1. 等有了五秒数据的时候开始判断
+        //2. 判断刚刚五秒是否有4个点在平均分附近,因为刚开始,所以直行记录直行了五秒钟golen
+        //3. 继续看第六秒
+        //   如果刚刚5s是直行,那么以该点为终点的5s判断是否是直的
+        //          如果当前也直,那么len=6
+        //          如果当前不直,那么len=5or6.7.8 结束并输出刚刚直行的长度,并且之后的三秒也不需要判断,因为如果算了,那么就跟刚刚的直行连接上了,那也就不算中断了
+        //   如果刚刚不直,现在也不直,那就跳过
+        //   如果现在5s直了,那就记录len=5
         if(waitIndex != degreeSize && recording){
             return;
         }
@@ -329,6 +345,7 @@ public class PredictActivity extends AppCompatActivity implements SensorEventLis
             goLen += 1;
         }else if(curIsGo){
             goLen = 5;
+        //当直行中断后的几秒并不需要判断,直接跳过,所以waitIndex + 4
         }else if(lastIsGo){
             float average = averageDegreeArr(waitIndex-1, goLen);
             int distance =  diffStep(waitIndex-1, goLen) * 2; //一圈为2米

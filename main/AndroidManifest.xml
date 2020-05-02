@@ -26,8 +26,10 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".PredictActivity"></activity>
+        <activity android:name=".ProcessActivity"></activity>
+        <activity android:name=".PredictActivity" />
         <activity android:name=".RecordActivity" />
+
         <meta-data
             android:name="com.amap.api.v2.apikey"
             android:value="3a9eff2c35fb79e8a3c81c6f2ebec537" />

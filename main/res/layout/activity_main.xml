@@ -17,7 +17,14 @@ android:padding="5dp">
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/enterRecordActivity"
-        android:text="预测轨迹"
+        android:text="实时预测轨迹"
+        />
+    <Button
+        android:id="@+id/enterProcessActivity"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/enterPredictActivity"
+        android:text="文件预测轨迹"
         />
 
 

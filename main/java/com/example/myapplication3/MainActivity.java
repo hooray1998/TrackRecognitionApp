@@ -36,6 +36,7 @@ MainActivity extends AppCompatActivity {
 
     private Button recordButton;
     private Button predictButton;
+    private Button processButton;
 
     public MainActivity() {
     }
@@ -56,6 +57,7 @@ MainActivity extends AppCompatActivity {
 
         recordButton = findViewById(R.id.enterRecordActivity);
         predictButton = findViewById(R.id.enterPredictActivity);
+        processButton = findViewById(R.id.enterProcessActivity);
 
         recordButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -69,6 +71,14 @@ MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 Intent intent = new Intent(MainActivity.this, PredictActivity.class);
+                startActivity(intent);
+            }
+        });
+
+        processButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MainActivity.this, ProcessActivity.class);
                 startActivity(intent);
             }
         });

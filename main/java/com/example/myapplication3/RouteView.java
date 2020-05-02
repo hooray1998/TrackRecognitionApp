@@ -79,7 +79,7 @@ public class RouteView extends View {
 
 
 
-        canvas.drawText("比例:  I——I " + 5 /totalRatio + "m", 50,50, mPaint);
+        canvas.drawText("比例:  I——I " + 250 /totalRatio + "m", 50,50, mPaint);
 
 
 
@@ -179,14 +179,14 @@ public class RouteView extends View {
                         currentStatus = STATUS_ZOOM_IN;
                     }
                     // 进行缩放倍数检查，最大只允许将图片放大4倍，最小可以缩小到初始化比例
-                    if ((currentStatus == STATUS_ZOOM_OUT && totalRatio <= 5)
-                            || (currentStatus == STATUS_ZOOM_IN && totalRatio >= 0.01)) {
+                    if ((currentStatus == STATUS_ZOOM_OUT && totalRatio <= 250)
+                            || (currentStatus == STATUS_ZOOM_IN && totalRatio >= 0.1)) {
                         float scaledRatio = (float) (fingerDis / lastFingerDis);
                         totalRatio = totalRatio * scaledRatio;
-                        if (totalRatio > 5) {
-                            totalRatio = 5;
-                        } else if (totalRatio < 0.01) {
-                            totalRatio = (float) 0.01;
+                        if (totalRatio > 250) {
+                            totalRatio = 250;
+                        } else if (totalRatio < 0.1) {
+                            totalRatio = (float) 0.1;
                         }
                         // 调用onDraw()方法绘制图片
                         invalidate();

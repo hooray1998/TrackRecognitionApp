@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Environment;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -12,6 +13,7 @@ public class FileWriter {
 
     private Context mContext;
     FileOutputStream file;
+    FileInputStream rFile;
     public   boolean empty;
     String curFilename;
     File downFolder;

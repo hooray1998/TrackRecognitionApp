@@ -458,12 +458,10 @@ public class RecordActivity extends AppCompatActivity implements SensorEventList
 
     private void setProgressValue(RoundCornerProgressBar progress, float value) {
         if(value < 0){
-            //progress.setBackgroundColor(Color.GRAY);
             progress.setReverse(true);
             progress.setProgress(-value);
         }
         else{
-            //progress.setBackgroundColor(Color.BLACK);
             progress.setReverse(false);
             progress.setProgress(value);
         }
