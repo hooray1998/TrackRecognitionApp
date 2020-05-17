@@ -437,8 +437,10 @@ public class ProcessActivity extends AppCompatActivity {
         }else if(lastIsGo){
             float average = averageDegreeArr(waitIndex-1, goLen);
             int distance =  diffStep(waitIndex-1, goLen) * 2; //一圈为2米
-            infoText.append(String.format("\n%3d~%3ds | %3dm | %5.1f° | %3d | %2.1f m/s\n",waitIndex-goLen-1, waitIndex-1, distance, average, goLen, (float)distance/goLen));
-            updateRouteCanvas(average, distance);
+            if(distance>30){
+                infoText.append(String.format("\n%3d~%3ds | %3dm | %5.1f° | %3d | %2.1f m/s\n",waitIndex-goLen-1, waitIndex-1, distance, average, goLen, (float)distance/goLen));
+                updateRouteCanvas(average, distance);
+            }
             goCount += 1;
             goDistance += distance;
             waitIndex += MinGoTime-1;

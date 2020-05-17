@@ -10,7 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="50dp"
         android:layout_below="@id/canvas"
-        android:text="选择文件" />
+        android:text="预测轨迹" />
 
 
     <ScrollView

@@ -24,7 +24,7 @@ public class FileWriter {
         downFolder = mContext.getExternalFilesDir( Environment.DIRECTORY_DOWNLOADS );
         try {
             FileOutputStream fileOutputStream = new FileOutputStream( new File( downFolder, "测试文件存储能力.txt" ) );
-            fileOutputStream.write("甜甜小仙女".getBytes());
+            fileOutputStream.write("测试文件存储功能的文件".getBytes());
             fileOutputStream.close();
         } catch (IOException e) {
             e.printStackTrace();

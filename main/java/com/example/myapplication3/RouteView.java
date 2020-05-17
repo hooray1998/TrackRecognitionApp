@@ -83,7 +83,7 @@ public class RouteView extends View {
 
 
 
-        canvas.translate(canvas.getWidth()/2, canvas.getHeight()/2); //将位置移动画纸的坐标点:150,150
+        canvas.translate(canvas.getWidth()/6, canvas.getHeight()*6/7); //将位置移动画纸的坐标点:150,150
 
         canvas.scale(totalRatio, totalRatio);
         //使用path绘制路径文字
